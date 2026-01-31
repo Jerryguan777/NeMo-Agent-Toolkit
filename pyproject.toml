@@ -371,6 +371,7 @@ nat_registry_handlers = "nat.registry_handlers.register"
 
 
 [project.entry-points.'nat.cli']
+analyze = "nat.cli.commands.analyze:analyze_command"
 configure = "nat.cli.commands.configure.configure:configure_command"
 eval = "nat.cli.commands.evaluate:eval_command"
 finetune = "nat.cli.commands.finetune:finetune_command"
