@@ -31,6 +31,7 @@ from nat.data_models.common import TypedBaseModel
 from nat.data_models.component_ref import FunctionGroupRef
 from nat.data_models.component_ref import FunctionRef
 from nat.data_models.component_ref import MiddlewareRef
+from nat.data_models.component_ref import SandboxRef
 from nat.data_models.component_ref import TrainerAdapterRef
 from nat.data_models.component_ref import TrainerRef
 from nat.data_models.component_ref import TrajectoryBuilderRef
@@ -47,7 +48,9 @@ from nat.data_models.memory import MemoryBaseConfig
 from nat.data_models.middleware import MiddlewareBaseConfig
 from nat.data_models.object_store import ObjectStoreBaseConfig
 from nat.data_models.retriever import RetrieverBaseConfig
+from nat.data_models.sandbox import SandboxBaseConfig
 from nat.data_models.ttc_strategy import TTCStrategyBaseConfig
+from nat.sandbox import BaseSandbox
 from nat.experimental.decorators.experimental_warning_decorator import experimental
 from nat.experimental.test_time_compute.models.stage_enums import PipelineTypeEnum
 from nat.experimental.test_time_compute.models.stage_enums import StageTypeEnum
@@ -346,6 +349,23 @@ class ChildBuilder(Builder):
     def get_middleware_config(self, middleware_name: str | MiddlewareRef) -> MiddlewareBaseConfig:
         """Get the configuration for middleware."""
         return self._workflow_builder.get_middleware_config(middleware_name)
+
+    @override
+    async def add_sandbox(self, name: str | SandboxRef, config: SandboxBaseConfig) -> BaseSandbox:
+        """Add a sandbox to the builder."""
+        return await self._workflow_builder.add_sandbox(name, config)
+
+    @override
+    async def get_sandbox(self, sandbox_name: str | SandboxRef) -> BaseSandbox:
+        """Get built sandbox by name."""
+        sandbox = await self._workflow_builder.get_sandbox(sandbox_name)
+        self._dependencies.add_sandbox(sandbox_name)
+        return sandbox
+
+    @override
+    def get_sandbox_config(self, sandbox_name: str | SandboxRef) -> SandboxBaseConfig:
+        """Get the configuration for sandbox."""
+        return self._workflow_builder.get_sandbox_config(sandbox_name)
 
     @staticmethod
     @contextmanager

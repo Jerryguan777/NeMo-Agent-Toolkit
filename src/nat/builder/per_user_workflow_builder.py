@@ -47,6 +47,7 @@ from nat.data_models.component_ref import FunctionGroupRef
 from nat.data_models.component_ref import FunctionRef
 from nat.data_models.component_ref import MiddlewareRef
 from nat.data_models.component_ref import RetrieverRef
+from nat.data_models.component_ref import SandboxRef
 from nat.data_models.component_ref import TrainerAdapterRef
 from nat.data_models.component_ref import TrainerRef
 from nat.data_models.component_ref import TrajectoryBuilderRef
@@ -64,7 +65,9 @@ from nat.data_models.memory import MemoryBaseConfig
 from nat.data_models.middleware import MiddlewareBaseConfig
 from nat.data_models.object_store import ObjectStoreBaseConfig
 from nat.data_models.retriever import RetrieverBaseConfig
+from nat.data_models.sandbox import SandboxBaseConfig
 from nat.data_models.ttc_strategy import TTCStrategyBaseConfig
+from nat.sandbox import BaseSandbox
 from nat.experimental.decorators.experimental_warning_decorator import experimental
 from nat.experimental.test_time_compute.models.stage_enums import PipelineTypeEnum
 from nat.experimental.test_time_compute.models.stage_enums import StageTypeEnum
@@ -552,6 +555,18 @@ class PerUserWorkflowBuilder(Builder, AbstractAsyncContextManager):
     @override
     def get_middleware_config(self, middleware_name: str | MiddlewareRef) -> MiddlewareBaseConfig:
         return self._shared_builder.get_middleware_config(middleware_name)
+
+    @override
+    async def add_sandbox(self, name: str | SandboxRef, config: SandboxBaseConfig) -> BaseSandbox:
+        return await self._shared_builder.add_sandbox(name, config)
+
+    @override
+    async def get_sandbox(self, sandbox_name: str | SandboxRef) -> BaseSandbox:
+        return await self._shared_builder.get_sandbox(sandbox_name)
+
+    @override
+    def get_sandbox_config(self, sandbox_name: str | SandboxRef) -> SandboxBaseConfig:
+        return self._shared_builder.get_sandbox_config(sandbox_name)
 
     @experimental(feature_name="Finetuning")
     @override

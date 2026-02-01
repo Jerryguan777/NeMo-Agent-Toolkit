@@ -80,11 +80,14 @@ from nat.data_models.registry_handler import RegistryHandlerBaseConfig
 from nat.data_models.registry_handler import RegistryHandlerBaseConfigT
 from nat.data_models.retriever import RetrieverBaseConfig
 from nat.data_models.retriever import RetrieverBaseConfigT
+from nat.data_models.sandbox import SandboxBaseConfig
+from nat.data_models.sandbox import SandboxBaseConfigT
 from nat.data_models.telemetry_exporter import TelemetryExporterBaseConfig
 from nat.data_models.telemetry_exporter import TelemetryExporterConfigT
 from nat.data_models.ttc_strategy import TTCStrategyBaseConfig
 from nat.data_models.ttc_strategy import TTCStrategyBaseConfigT
 from nat.experimental.test_time_compute.models.strategy_base import StrategyBase
+from nat.sandbox.base import BaseSandbox
 from nat.finetuning.interfaces.finetuning_runner import Trainer
 from nat.finetuning.interfaces.trainer_adapter import TrainerAdapter
 from nat.finetuning.interfaces.trajectory_builder import TrajectoryBuilder
@@ -118,6 +121,7 @@ RetrieverClientBuildCallableT = Callable[[RetrieverBaseConfigT, Builder], AsyncI
 RetrieverProviderBuildCallableT = Callable[[RetrieverBaseConfigT, Builder], AsyncIterator[RetrieverProviderInfo]]
 TelemetryExporterBuildCallableT = Callable[[TelemetryExporterConfigT, Builder], AsyncIterator[BaseExporter]]
 ToolWrapperBuildCallableT = Callable[[str, Function, Builder], typing.Any]
+SandboxBuildCallableT = Callable[[SandboxBaseConfigT, Builder], AsyncIterator[BaseSandbox]]
 
 AuthProviderRegisteredCallableT = Callable[[AuthProviderBaseConfigT, Builder],
                                            AbstractAsyncContextManager[AuthProviderBase]]
@@ -147,6 +151,7 @@ RetrieverClientRegisteredCallableT = Callable[[RetrieverBaseConfigT, Builder], A
 RetrieverProviderRegisteredCallableT = Callable[[RetrieverBaseConfigT, Builder],
                                                 AbstractAsyncContextManager[RetrieverProviderInfo]]
 TeleExporterRegisteredCallableT = Callable[[TelemetryExporterConfigT, Builder], AbstractAsyncContextManager[typing.Any]]
+SandboxRegisteredCallableT = Callable[[SandboxBaseConfigT, Builder], AbstractAsyncContextManager[BaseSandbox]]
 
 
 class RegisteredInfo(BaseModel, typing.Generic[TypedBaseModelT]):
@@ -407,6 +412,15 @@ class RegisteredRegistryHandlerInfo(RegisteredInfo[RegistryHandlerBaseConfig]):
     build_fn: RegistryHandlerRegisteredCallableT = Field(repr=False)
 
 
+class RegisteredSandboxInfo(RegisteredInfo[SandboxBaseConfig]):
+    """
+    Represents a registered Sandbox. Sandboxes provide isolated execution environments
+    for running code, commands, and file operations.
+    """
+
+    build_fn: SandboxRegisteredCallableT = Field(repr=False)
+
+
 class RegisteredPackage(BaseModel):
     package_name: str
     discovery_metadata: DiscoveryMetadata
@@ -481,6 +495,9 @@ class TypeRegistry:
         self._registered_trainer_adapter_infos: dict[type[TrainerAdapterConfig], RegisteredTrainerAdapterInfo] = {}
         self._registered_trajectory_builder_infos: dict[type[TrajectoryBuilderConfig],
                                                         RegisteredTrajectoryBuilderInfo] = {}
+
+        # Sandboxes
+        self._registered_sandbox_infos: dict[type[SandboxBaseConfig], RegisteredSandboxInfo] = {}
 
         # Packages
         self._registered_packages: dict[str, RegisteredPackage] = {}
@@ -1042,6 +1059,49 @@ class TypeRegistry:
 
         return list(self._registered_registry_handler_infos.values())
 
+    def register_sandbox(self, info: RegisteredSandboxInfo):
+        """Register a sandbox implementation.
+
+        Args:
+            info: The sandbox registration information
+
+        Raises:
+            ValueError: If a sandbox with the same config type is already registered
+        """
+        if info.config_type in self._registered_sandbox_infos:
+            raise ValueError(
+                f"A Sandbox with the same config type `{info.config_type}` has already been registered.")
+
+        self._registered_sandbox_infos[info.config_type] = info
+
+        self._registration_changed()
+
+    def get_sandbox(self, config_type: type[SandboxBaseConfig]) -> RegisteredSandboxInfo:
+        """Get a registered sandbox by its config type.
+
+        Args:
+            config_type: The sandbox configuration type
+
+        Returns:
+            RegisteredSandboxInfo: The registered sandbox information
+
+        Raises:
+            KeyError: If no sandbox is registered for the given config type
+        """
+        try:
+            return self._registered_sandbox_infos[config_type]
+        except KeyError as err:
+            raise KeyError(f"Could not find a registered Sandbox for config `{config_type}`. "
+                           f"Registered configs: {set(self._registered_sandbox_infos.keys())}") from err
+
+    def get_registered_sandboxes(self) -> list[RegisteredInfo[SandboxBaseConfig]]:
+        """Get all registered sandboxes.
+
+        Returns:
+            list[RegisteredInfo[SandboxBaseConfig]]: List of all registered sandboxes
+        """
+        return list(self._registered_sandbox_infos.values())
+
     def register_package(self, package_name: str, package_version: str | None = None):
 
         discovery_metadata = DiscoveryMetadata.from_package_name(package_name=package_name,
@@ -1133,6 +1193,9 @@ class TypeRegistry:
 
         if component_type == ComponentEnum.TRAINER_ADAPTER:
             return self._registered_trainer_adapter_infos
+
+        if component_type == ComponentEnum.SANDBOX:
+            return self._registered_sandbox_infos
 
         raise ValueError(f"Supplied an unsupported component type {component_type}")
 
@@ -1271,6 +1334,9 @@ class TypeRegistry:
 
         if issubclass(cls, TrajectoryBuilderConfig):
             return self._do_compute_annotation(cls, self.get_registered_trajectory_builders())
+
+        if issubclass(cls, SandboxBaseConfig):
+            return self._do_compute_annotation(cls, self.get_registered_sandboxes())
 
         raise ValueError(f"Supplied an unsupported component type {cls}")
 

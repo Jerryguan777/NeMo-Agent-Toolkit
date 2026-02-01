@@ -54,13 +54,17 @@ class PluginTypes(IntFlag):
     A plugin that is an API authentication provider for the workflow. This includes Oauth2, API Key, etc.
     """
     REGISTRY_HANDLER = auto()
+    SANDBOX = auto()
+    """
+    A plugin that provides sandbox environments for code execution. This includes Docker, Daytona, etc.
+    """
 
     # Convenience flag for groups of plugin types
-    CONFIG_OBJECT = COMPONENT | FRONT_END | EVALUATOR | AUTHENTICATION
+    CONFIG_OBJECT = COMPONENT | FRONT_END | EVALUATOR | AUTHENTICATION | SANDBOX
     """
     Any plugin that can be specified in the NAT configuration file.
     """
-    ALL = COMPONENT | FRONT_END | EVALUATOR | REGISTRY_HANDLER | AUTHENTICATION
+    ALL = COMPONENT | FRONT_END | EVALUATOR | REGISTRY_HANDLER | AUTHENTICATION | SANDBOX
     """
     All plugin types
     """
@@ -146,6 +150,8 @@ def discover_entrypoints(plugin_type: PluginTypes):
         plugin_groups.extend(["aiq.evaluators", "nat.evaluators"])
     if (plugin_type & PluginTypes.AUTHENTICATION):
         plugin_groups.extend(["aiq.authentication_providers", "nat.authentication_providers"])
+    if (plugin_type & PluginTypes.SANDBOX):
+        plugin_groups.extend(["nat.sandboxes"])
 
     # Get the entry points for the specified groups
     nat_plugins = reduce(lambda x, y: list(x) + list(y), [entry_points.select(group=y) for y in plugin_groups])

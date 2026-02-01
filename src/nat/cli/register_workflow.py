@@ -50,6 +50,8 @@ from nat.cli.type_registry import RegisteredToolWrapper
 from nat.cli.type_registry import RegistryHandlerBuildCallableT
 from nat.cli.type_registry import RegistryHandlerRegisteredCallableT
 from nat.cli.type_registry import RetrieverClientBuildCallableT
+from nat.cli.type_registry import SandboxBuildCallableT
+from nat.cli.type_registry import SandboxRegisteredCallableT
 from nat.cli.type_registry import RetrieverClientRegisteredCallableT
 from nat.cli.type_registry import RetrieverProviderBuildCallableT
 from nat.cli.type_registry import RetrieverProviderRegisteredCallableT
@@ -82,6 +84,7 @@ from nat.data_models.middleware import MiddlewareBaseConfigT
 from nat.data_models.object_store import ObjectStoreBaseConfigT
 from nat.data_models.registry_handler import RegistryHandlerBaseConfigT
 from nat.data_models.retriever import RetrieverBaseConfigT
+from nat.data_models.sandbox import SandboxBaseConfigT
 from nat.data_models.ttc_strategy import TTCStrategyBaseConfigT
 from nat.utils.type_utils import DecomposedType
 
@@ -748,3 +751,39 @@ def register_registry_handler(config_type: type[RegistryHandlerBaseConfigT]):
         return context_manager_fn
 
     return register_registry_handler_inner
+
+
+def register_sandbox(config_type: type[SandboxBaseConfigT]):
+    """Register a sandbox implementation.
+
+    Sandboxes provide isolated execution environments for running code, commands,
+    and file operations. Common implementations include Docker containers and
+    cloud-based sandboxes like Daytona.
+
+    Args:
+        config_type: The sandbox configuration type to register
+
+    Returns:
+        A decorator that wraps the build function as an async context manager
+    """
+
+    def register_sandbox_inner(
+        fn: SandboxBuildCallableT[SandboxBaseConfigT]
+    ) -> SandboxRegisteredCallableT[SandboxBaseConfigT]:
+        from .type_registry import GlobalTypeRegistry
+        from .type_registry import RegisteredSandboxInfo
+
+        context_manager_fn = asynccontextmanager(fn)
+
+        discovery_metadata = DiscoveryMetadata.from_config_type(config_type=config_type,
+                                                                component_type=ComponentEnum.SANDBOX)
+
+        GlobalTypeRegistry.get().register_sandbox(
+            RegisteredSandboxInfo(full_type=config_type.full_type,
+                                  config_type=config_type,
+                                  build_fn=context_manager_fn,
+                                  discovery_metadata=discovery_metadata))
+
+        return context_manager_fn
+
+    return register_sandbox_inner

@@ -114,6 +114,12 @@ ragaai = ["nvidia-nat-ragaai"]
 mysql = ["nvidia-nat-mysql"]
 redis = ["nvidia-nat-redis"]
 s3 = ["nvidia-nat-s3"]
+sandbox-daytona = ["daytona-sdk>=0.1.0"]
+sandbox-docker = ["docker>=7.0.0"]
+sandbox = [
+  "nvidia-nat[sandbox-docker]",
+  "nvidia-nat[sandbox-daytona]",
+]
 semantic-kernel = ["nvidia-nat-semantic-kernel"]
 strands = ["nvidia-nat-strands"]
 telemetry = [
@@ -359,7 +365,12 @@ nat_llms = "nat.llm.register"
 nat_object_stores = "nat.object_store.register"
 nat_observability = "nat.observability.register"
 nat_retrievers = "nat.retriever.register"
+nat_sandbox_tools = "nat.sandbox.tools.register"
 nat_tools = "nat.tool.register"
+
+
+[project.entry-points.'nat.sandboxes']
+nat_sandboxes = "nat.sandbox.register"
 
 
 [project.entry-points.'nat.front_ends']

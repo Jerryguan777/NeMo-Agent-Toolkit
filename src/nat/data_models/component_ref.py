@@ -221,3 +221,14 @@ class TrainerAdapterRef(ComponentRef):
     @override
     def component_group(self):
         return ComponentGroup.TRAINER_ADAPTERS
+
+
+class SandboxRef(ComponentRef):
+    """
+    A reference to a sandbox in a NAT configuration object.
+    """
+
+    @property
+    @override
+    def component_group(self):
+        return ComponentGroup.SANDBOXES

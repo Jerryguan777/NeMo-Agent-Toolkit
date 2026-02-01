@@ -1,0 +1,97 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Sandbox Agent Configuration with Daytona Cloud
+# Uses NAT's native react_agent with Daytona cloud sandboxes
+#
+# Usage:
+#   1. Set your Daytona API key:
+#      export DAYTONA_API_KEY=<your-api-key>
+#
+#   2. Run the agent:
+#      nat run --config_file configs/config_daytona.yaml --input "Your task here"
+
+# LLM Configuration
+llms:
+  agent_llm:
+    _type: nim
+    model_name: meta/llama-3.3-70b-instruct
+    temperature: 0.0
+    max_tokens: 4096
+
+# Sandbox Configuration - Daytona Cloud
+sandboxes:
+  code_sandbox:
+    _type: daytona
+    api_key: ${DAYTONA_API_KEY}
+    server_url: https://api.daytona.io
+    target: us
+    image: "daytonaio/workspace:latest"
+    cpu: 4
+    memory: 8  # GB
+    disk: 20   # GB
+    auto_stop_interval: 30  # minutes
+
+# Function Configuration
+function_groups:
+  sandbox_tools:
+    _type: sandbox_tools
+    sandbox_name: code_sandbox
+    max_output_chars: 20000
+    # Daytona image may not have Playwright, so exclude web_browse
+
+functions:
+  web_search:
+    _type: web_search
+    max_results: 5
+
+# Workflow Configuration
+workflow:
+  _type: react_agent
+  llm_name: agent_llm
+  tool_names:
+    - sandbox_tools
+    - web_search
+  max_iterations: 30
+  # Use additional_instructions to customize behavior while keeping the ReAct format
+  additional_instructions: |
+    You are a powerful AI assistant with access to a Daytona cloud sandbox
+    where you can execute code, browse the web, and manipulate files.
+
+    ## Sandbox Environment
+    - /workspace/input - User-uploaded files
+    - /workspace/output - Save generated outputs here
+    - /workspace/temp - Temporary files
+    - The sandbox has internet access for web browsing and downloads.
+
+    ## CRITICAL RULES
+
+    ### Tool Usage
+    1. NEVER guess or calculate in your head - ALWAYS use `sandbox_tools__python` for ANY calculation.
+    2. NEVER make assumptions about facts - ALWAYS use `web_search` to verify information.
+    3. NEVER guess file contents - ALWAYS use `sandbox_tools__file_read` to examine files.
+    4. Check /workspace/input first for attached files using `sandbox_tools__shell` with `ls -la /workspace/input`.
+
+    ### Tool Selection
+    - System operations (ls, cp, mv, pip install, curl, wget): Use `sandbox_tools__shell`
+    - Data processing, calculations, file parsing: Use `sandbox_tools__python`
+    - Read/write files: Use `sandbox_tools__file_read` / `sandbox_tools__file_write`
+    - Web research: Use `web_search`
+
+    ### Problem-Solving
+    - Break down complex tasks into smaller steps
+    - Handle errors gracefully and try alternative approaches
+    - Save important outputs to /workspace/output/
+    - Be concise in your final answers

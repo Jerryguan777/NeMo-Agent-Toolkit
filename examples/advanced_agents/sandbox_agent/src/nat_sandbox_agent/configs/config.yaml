@@ -1,0 +1,94 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Sandbox Agent Configuration
+# Uses NAT's native react_agent with sandbox tools
+#
+# Required environment variables:
+#   - NVIDIA_API_KEY or NGC_API_KEY: For NIM LLM access
+#   - TAVILY_API_KEY: For web search (get free key at https://tavily.com)
+
+# LLM Configuration
+llms:
+  agent_llm:
+    _type: nim
+    model_name: meta/llama-3.3-70b-instruct
+    temperature: 0.0
+    max_tokens: 4096
+
+# Sandbox Configuration
+sandboxes:
+  code_sandbox:
+    _type: docker
+    image: "nat-sandbox:latest"
+    memory_limit: "1g"
+    cpu_limit: 2.0
+    network_enabled: true
+
+# Function Configuration - Tools for the agent
+function_groups:
+  # Sandbox tools (shell, python, file_read, file_write, web_browse)
+  sandbox_tools:
+    _type: sandbox_tools
+    sandbox_name: code_sandbox
+    max_output_chars: 16000
+    include_tools: [shell, python, file_read, file_write, web_browse]
+
+functions:
+
+  # Web search (runs on host, API key not exposed to sandbox)
+  web_search:
+    _type: web_search
+    max_results: 5
+
+# Workflow Configuration - NAT's native ReAct agent
+workflow:
+  _type: react_agent
+  llm_name: agent_llm
+  tool_names:
+    - sandbox_tools
+    - web_search
+  max_iterations: 20
+  # Use additional_instructions to customize behavior while keeping the ReAct format
+  additional_instructions: |
+    You are a powerful AI assistant with access to an isolated sandbox environment
+    where you can execute code, browse the web, and manipulate files.
+
+    ## Sandbox Environment
+    - /workspace/input - User-uploaded files
+    - /workspace/output - Save generated outputs here
+    - /workspace/temp - Temporary files
+    - The sandbox has internet access for web browsing and downloads.
+
+    ## CRITICAL RULES
+
+    ### Tool Usage
+    1. NEVER guess or calculate in your head - ALWAYS use `sandbox_tools__python` for ANY calculation.
+    2. NEVER make assumptions about facts - ALWAYS use `web_search` to verify information.
+    3. NEVER guess file contents - ALWAYS use `sandbox_tools__file_read` to examine files.
+    4. Check /workspace/input first for attached files using `sandbox_tools__shell` with `ls -la /workspace/input`.
+
+    ### Tool Selection
+    - System operations (ls, cp, mv, pip install, curl, wget): Use `sandbox_tools__shell`
+    - Data processing, calculations, file parsing: Use `sandbox_tools__python`
+    - Read/write files: Use `sandbox_tools__file_read` / `sandbox_tools__file_write`
+    - Web research: Use `web_search`
+    - Browse specific URLs: Use `sandbox_tools__web_browse`
+
+    ### Problem-Solving
+    - Break down complex tasks into smaller steps
+    - Handle errors gracefully and try alternative approaches
+    - Save important outputs to /workspace/output/
+    - Be concise in your final answers

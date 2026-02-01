@@ -31,7 +31,10 @@ from nat.builder.sync_builder import SyncBuilder
 from nat.cli.type_registry import GlobalTypeRegistry
 from nat.data_models.authentication import AuthProviderBaseConfig
 from nat.data_models.component_ref import MiddlewareRef
+from nat.data_models.component_ref import SandboxRef
 from nat.data_models.embedder import EmbedderBaseConfig
+from nat.data_models.sandbox import SandboxBaseConfig
+from nat.sandbox import BaseSandbox
 from nat.data_models.finetuning import TrainerAdapterConfig
 from nat.data_models.finetuning import TrainerConfig
 from nat.data_models.finetuning import TrajectoryBuilderConfig
@@ -384,6 +387,31 @@ class MockBuilder(Builder):
     async def get_trajectory_builder_config(self, trajectory_builder_name: str) -> TrajectoryBuilderConfig:
         """Mock implementation."""
         return TrajectoryBuilderConfig()
+
+    def mock_sandbox(self, name: str, mock_response: typing.Any):
+        """Add a mock sandbox that returns a fixed response."""
+        self._mocks[f"sandbox_{name}"] = mock_response
+
+    async def add_sandbox(self, name: str | SandboxRef, config: SandboxBaseConfig) -> BaseSandbox:
+        """Mock implementation."""
+        return MagicMock(spec=BaseSandbox)
+
+    async def get_sandbox(self, sandbox_name: str | SandboxRef) -> BaseSandbox:
+        """Return a mock sandbox if one is configured."""
+        if isinstance(sandbox_name, SandboxRef):
+            sandbox_name = str(sandbox_name)
+        key = f"sandbox_{sandbox_name}"
+        if key in self._mocks:
+            mock_sandbox = MagicMock()
+            mock_sandbox.run_command = AsyncMock(return_value=self._mocks[key])
+            mock_sandbox.read_file = AsyncMock(return_value=self._mocks[key])
+            mock_sandbox.write_file = AsyncMock(return_value=None)
+            return mock_sandbox
+        raise ValueError(f"Sandbox '{sandbox_name}' not mocked. Use mock_sandbox() to add it.")
+
+    def get_sandbox_config(self, sandbox_name: str | SandboxRef) -> SandboxBaseConfig:
+        """Mock implementation."""
+        return SandboxBaseConfig()
 
 
 class ToolTestRunner:

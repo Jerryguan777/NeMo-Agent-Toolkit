@@ -48,6 +48,7 @@ logger = logging.getLogger(__name__)
 
 # Order in which we want to process the component groups
 # IMPORTANT: MIDDLEWARE must be built before FUNCTIONS
+# IMPORTANT: SANDBOXES must be built before FUNCTION_GROUPS (sandbox tools depend on sandboxes)
 _component_group_order = [
     ComponentGroup.AUTHENTICATION,
     ComponentGroup.EMBEDDERS,
@@ -56,6 +57,7 @@ _component_group_order = [
     ComponentGroup.OBJECT_STORES,
     ComponentGroup.RETRIEVERS,
     ComponentGroup.TTC_STRATEGIES,
+    ComponentGroup.SANDBOXES,
     ComponentGroup.MIDDLEWARE,
     ComponentGroup.FUNCTION_GROUPS,
     ComponentGroup.FUNCTIONS,
@@ -289,7 +291,8 @@ def build_dependency_sequence(config: "Config") -> list[ComponentInstanceData]:
     total_node_count = (len(config.embedders) + len(config.functions) + len(config.function_groups) + len(config.llms) +
                         len(config.memory) + len(config.object_stores) + len(config.retrievers) +
                         len(config.ttc_strategies) + len(config.authentication) + len(config.middleware) +
-                        len(config.trainers) + len(config.trajectory_builders) + len(config.trainer_adapters) + 1
+                        len(config.trainers) + len(config.trajectory_builders) + len(config.trainer_adapters) +
+                        len(config.sandboxes) + 1
                         )  # +1 for the workflow
 
     dependency_map: dict

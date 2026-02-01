@@ -29,6 +29,7 @@ class FunctionDependencies(BaseModel):
     memory_clients: set[str] = Field(default_factory=set)
     object_stores: set[str] = Field(default_factory=set)
     retrievers: set[str] = Field(default_factory=set)
+    sandboxes: set[str] = Field(default_factory=set)
 
     @field_serializer("functions", when_used="json")
     def serialize_functions(self, v: set[str]) -> list[str]:
@@ -58,6 +59,10 @@ class FunctionDependencies(BaseModel):
     def serialize_retrievers(self, v: set[str]) -> list[str]:
         return list(v)
 
+    @field_serializer("sandboxes", when_used="json")
+    def serialize_sandboxes(self, v: set[str]) -> list[str]:
+        return list(v)
+
     def add_function(self, function: str):
         self.functions.add(function)
 
@@ -78,3 +83,6 @@ class FunctionDependencies(BaseModel):
 
     def add_retriever(self, retriever: str):
         self.retrievers.add(retriever)
+
+    def add_sandbox(self, sandbox: str):
+        self.sandboxes.add(sandbox)

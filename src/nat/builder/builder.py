@@ -36,6 +36,7 @@ from nat.data_models.component_ref import MemoryRef
 from nat.data_models.component_ref import MiddlewareRef
 from nat.data_models.component_ref import ObjectStoreRef
 from nat.data_models.component_ref import RetrieverRef
+from nat.data_models.component_ref import SandboxRef
 from nat.data_models.component_ref import TrainerAdapterRef
 from nat.data_models.component_ref import TrainerRef
 from nat.data_models.component_ref import TrajectoryBuilderRef
@@ -53,8 +54,10 @@ from nat.data_models.memory import MemoryBaseConfig
 from nat.data_models.middleware import MiddlewareBaseConfig
 from nat.data_models.object_store import ObjectStoreBaseConfig
 from nat.data_models.retriever import RetrieverBaseConfig
+from nat.data_models.sandbox import SandboxBaseConfig
 from nat.data_models.ttc_strategy import TTCStrategyBaseConfig
 from nat.experimental.decorators.experimental_warning_decorator import experimental
+from nat.sandbox.base import BaseSandbox
 from nat.experimental.test_time_compute.models.stage_enums import PipelineTypeEnum
 from nat.experimental.test_time_compute.models.stage_enums import StageTypeEnum
 from nat.finetuning.interfaces.finetuning_runner import Trainer
@@ -808,6 +811,55 @@ class Builder(ABC):
             List of built middleware instances
         """
         tasks = [self.get_middleware(name) for name in middleware_names]
+        return list(await asyncio.gather(*tasks, return_exceptions=False))
+
+    @abstractmethod
+    async def add_sandbox(self, name: str | SandboxRef, config: SandboxBaseConfig) -> BaseSandbox:
+        """Add a sandbox to the builder.
+
+        Args:
+            name: The name or reference for the sandbox
+            config: The configuration for the sandbox
+
+        Returns:
+            The built sandbox instance
+        """
+        pass
+
+    @abstractmethod
+    async def get_sandbox(self, sandbox_name: str | SandboxRef) -> BaseSandbox:
+        """Get a sandbox by name.
+
+        Args:
+            sandbox_name: The name or reference of the sandbox
+
+        Returns:
+            The sandbox instance
+        """
+        pass
+
+    @abstractmethod
+    def get_sandbox_config(self, sandbox_name: str | SandboxRef) -> SandboxBaseConfig:
+        """Get the configuration for a sandbox.
+
+        Args:
+            sandbox_name: The name or reference of the sandbox
+
+        Returns:
+            The configuration for the sandbox
+        """
+        pass
+
+    async def get_sandboxes(self, sandbox_names: Sequence[str | SandboxRef]) -> list[BaseSandbox]:
+        """Get multiple sandboxes by name.
+
+        Args:
+            sandbox_names: The names or references of the sandboxes
+
+        Returns:
+            List of sandbox instances
+        """
+        tasks = [self.get_sandbox(name) for name in sandbox_names]
         return list(await asyncio.gather(*tasks, return_exceptions=False))
 
 

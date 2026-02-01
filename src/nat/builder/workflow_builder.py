@@ -56,6 +56,7 @@ from nat.data_models.component_ref import MemoryRef
 from nat.data_models.component_ref import MiddlewareRef
 from nat.data_models.component_ref import ObjectStoreRef
 from nat.data_models.component_ref import RetrieverRef
+from nat.data_models.component_ref import SandboxRef
 from nat.data_models.component_ref import TrainerAdapterRef
 from nat.data_models.component_ref import TrainerRef
 from nat.data_models.component_ref import TrajectoryBuilderRef
@@ -74,8 +75,10 @@ from nat.data_models.memory import MemoryBaseConfig
 from nat.data_models.middleware import MiddlewareBaseConfig
 from nat.data_models.object_store import ObjectStoreBaseConfig
 from nat.data_models.retriever import RetrieverBaseConfig
+from nat.data_models.sandbox import SandboxBaseConfig
 from nat.data_models.telemetry_exporter import TelemetryExporterBaseConfig
 from nat.data_models.ttc_strategy import TTCStrategyBaseConfig
+from nat.sandbox.base import BaseSandbox
 from nat.experimental.decorators.experimental_warning_decorator import experimental
 from nat.experimental.test_time_compute.models.stage_enums import PipelineTypeEnum
 from nat.experimental.test_time_compute.models.stage_enums import StageTypeEnum
@@ -177,6 +180,12 @@ class ConfiguredTrainerAdapter:
 class ConfiguredTrajectoryBuilder:
     config: TrajectoryBuilderConfig
     instance: TrajectoryBuilder
+
+
+@dataclasses.dataclass
+class ConfiguredSandbox:
+    config: SandboxBaseConfig
+    instance: BaseSandbox
 
 
 def _log_build_failure(component_name: str,
@@ -339,6 +348,7 @@ class WorkflowBuilder(Builder, AbstractAsyncContextManager):
         self._trainers: dict[str, ConfiguredTrainer] = {}
         self._trainer_adapters: dict[str, ConfiguredTrainerAdapter] = {}
         self._trajectory_builders: dict[str, ConfiguredTrajectoryBuilder] = {}
+        self._sandboxes: dict[str, ConfiguredSandbox] = {}
 
         self._context_state = ContextState.get()
 
@@ -1377,6 +1387,82 @@ class WorkflowBuilder(Builder, AbstractAsyncContextManager):
     def get_user_manager(self):
         return UserManagerHolder(context=Context(self._context_state))
 
+    @override
+    async def add_sandbox(self, name: str | SandboxRef, config: SandboxBaseConfig) -> BaseSandbox:
+        """Add a sandbox to the builder.
+
+        Args:
+            name: The name or reference for the sandbox
+            config: The configuration for the sandbox
+
+        Returns:
+            The built sandbox instance
+
+        Raises:
+            ValueError: If the sandbox already exists
+        """
+        if isinstance(name, SandboxRef):
+            name = str(name)
+
+        if name in self._sandboxes:
+            raise ValueError(f"Sandbox `{name}` already exists in the list of sandboxes")
+
+        try:
+            sandbox_info = self._registry.get_sandbox(type(config))
+
+            with ChildBuilder.use(config, self) as inner_builder:
+                sandbox_instance = await self._get_exit_stack().enter_async_context(
+                    sandbox_info.build_fn(config, inner_builder))
+
+            self._sandboxes[name] = ConfiguredSandbox(config=config, instance=sandbox_instance)
+
+            return sandbox_instance
+        except Exception as e:
+            logger.error("Error adding sandbox `%s` with config `%s`: %s", name, config, e)
+            raise
+
+    @override
+    async def get_sandbox(self, sandbox_name: str | SandboxRef) -> BaseSandbox:
+        """Get a sandbox by name.
+
+        Args:
+            sandbox_name: The name or reference of the sandbox
+
+        Returns:
+            The sandbox instance
+
+        Raises:
+            ValueError: If the sandbox is not found
+        """
+        if isinstance(sandbox_name, SandboxRef):
+            sandbox_name = str(sandbox_name)
+
+        if sandbox_name not in self._sandboxes:
+            raise ValueError(f"Sandbox `{sandbox_name}` not found")
+
+        return self._sandboxes[sandbox_name].instance
+
+    @override
+    def get_sandbox_config(self, sandbox_name: str | SandboxRef) -> SandboxBaseConfig:
+        """Get the configuration for a sandbox.
+
+        Args:
+            sandbox_name: The name or reference of the sandbox
+
+        Returns:
+            The configuration for the sandbox
+
+        Raises:
+            ValueError: If the sandbox is not found
+        """
+        if isinstance(sandbox_name, SandboxRef):
+            sandbox_name = str(sandbox_name)
+
+        if sandbox_name not in self._sandboxes:
+            raise ValueError(f"Sandbox `{sandbox_name}` not found")
+
+        return self._sandboxes[sandbox_name].config
+
     async def add_telemetry_exporter(self, name: str, config: TelemetryExporterBaseConfig) -> None:
         """Add an configured telemetry exporter to the builder.
 
@@ -1478,6 +1564,10 @@ class WorkflowBuilder(Builder, AbstractAsyncContextManager):
                 elif component_instance.component_group == ComponentGroup.TRAJECTORY_BUILDERS:
                     await self.add_trajectory_builder(component_instance.name,
                                                       cast(TrajectoryBuilderConfig, component_instance.config))
+                # Instantiate a sandbox
+                elif component_instance.component_group == ComponentGroup.SANDBOXES:
+                    await self.add_sandbox(component_instance.name,
+                                           cast(SandboxBaseConfig, component_instance.config))
                 else:
                     raise ValueError(f"Unknown component group {component_instance.component_group}")
 

@@ -51,6 +51,7 @@ from .memory import MemoryBaseConfig
 from .middleware import FunctionMiddlewareBaseConfig
 from .object_store import ObjectStoreBaseConfig
 from .retriever import RetrieverBaseConfig
+from .sandbox import SandboxBaseConfig
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,8 @@ def _process_validation_error(err: ValidationError, handler: ValidatorFunctionWr
                 registered_keys = GlobalTypeRegistry.get().get_registered_trainer_adapters()
             elif (info.field_name == "trajectory_builders"):
                 registered_keys = GlobalTypeRegistry.get().get_registered_trajectory_builders()
+            elif (info.field_name == "sandboxes"):
+                registered_keys = GlobalTypeRegistry.get().get_registered_sandboxes()
 
             else:
                 assert False, f"Unknown field name {info.field_name} in validator"
@@ -313,6 +316,9 @@ class Config(HashableBaseModel):
     # Evaluation Options
     eval: EvalConfig = EvalConfig()
 
+    # Sandboxes Configuration
+    sandboxes: dict[str, SandboxBaseConfig] = Field(default_factory=dict)
+
     # Finetuning Options
     trainers: dict[str, TrainerConfig] = Field(default_factory=dict)
     trainer_adapters: dict[str, TrainerAdapterConfig] = Field(default_factory=dict)
@@ -334,6 +340,7 @@ class Config(HashableBaseModel):
         stream.write(f"Number of Memory: {len(self.memory)}\n")
         stream.write(f"Number of Object Stores: {len(self.object_stores)}\n")
         stream.write(f"Number of Retrievers: {len(self.retrievers)}\n")
+        stream.write(f"Number of Sandboxes: {len(self.sandboxes)}\n")
         stream.write(f"Number of TTC Strategies: {len(self.ttc_strategies)}\n")
         stream.write(f"Number of Authentication Providers: {len(self.authentication)}\n")
 
@@ -344,6 +351,7 @@ class Config(HashableBaseModel):
                      "embedders",
                      "memory",
                      "retrievers",
+                     "sandboxes",
                      "workflow",
                      "ttc_strategies",
                      "authentication",
@@ -422,6 +430,10 @@ class Config(HashableBaseModel):
                                             typing.Annotated[type_registry.compute_annotation(TrajectoryBuilderConfig),
                                                              Discriminator(TypedBaseModel.discriminator)]]
 
+        SandboxesAnnotation = dict[str,
+                                   typing.Annotated[type_registry.compute_annotation(SandboxBaseConfig),
+                                                    Discriminator(TypedBaseModel.discriminator)]]
+
         should_rebuild = False
 
         auth_providers_field = cls.model_fields.get("authentication")
@@ -467,6 +479,11 @@ class Config(HashableBaseModel):
         retrievers_field = cls.model_fields.get("retrievers")
         if retrievers_field is not None and retrievers_field.annotation != RetrieverAnnotation:
             retrievers_field.annotation = RetrieverAnnotation
+            should_rebuild = True
+
+        sandboxes_field = cls.model_fields.get("sandboxes")
+        if sandboxes_field is not None and sandboxes_field.annotation != SandboxesAnnotation:
+            sandboxes_field.annotation = SandboxesAnnotation
             should_rebuild = True
 
         ttc_strategies_field = cls.model_fields.get("ttc_strategies")
