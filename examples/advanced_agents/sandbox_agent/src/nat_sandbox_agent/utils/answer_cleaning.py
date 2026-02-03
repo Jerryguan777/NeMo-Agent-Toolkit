@@ -18,20 +18,18 @@
 import re
 
 
-def clean_answer(response: str | None) -> str | None:
+def clean_answer(response: str) -> str:
     """Clean and extract the final answer from agent response.
 
     Removes common prefixes, explanatory text, and formatting to extract
     just the core answer for GAIA-style evaluation.
 
     Args:
-        response: The raw agent response, or None.
+        response: The raw agent response.
 
     Returns:
-        Cleaned answer string, or None if input was None.
+        Cleaned answer string.
     """
-    if response is None:
-        return None
     if not response:
         return response
 
@@ -61,9 +59,8 @@ def clean_answer(response: str | None) -> str | None:
     text = text.rstrip(".,;:")
 
     # If the answer looks like a number, extract just the number
-    # Use [^\d-]* to preserve the minus sign for negative numbers
     number_match = re.search(
-        r"^[^\d-]*(-?\d+(?:\.\d+)?)\s*"
+        r"^[^\d]*(-?\d+(?:\.\d+)?)\s*"
         r"(?:thousand|million|billion|hours?|minutes?|seconds?|meters?|m\^?\d*)?[^\d]*$",
         text,
         re.IGNORECASE,

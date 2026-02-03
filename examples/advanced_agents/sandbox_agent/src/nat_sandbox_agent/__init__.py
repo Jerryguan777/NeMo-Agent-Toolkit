@@ -23,7 +23,7 @@ Features:
     - Shell command execution in isolated containers
     - Python code execution for data processing
     - Web browsing and content extraction
-    - Web search using Tavily API (runs on host for security)
+    - Web search using DuckDuckGo
     - File operations (read, write, list, delete)
     - Document generation (PDF, Word, PowerPoint, HTML, Markdown)
 
@@ -35,15 +35,7 @@ Usage:
     nat eval configs/config_gaia.yaml
 """
 
-from importlib.metadata import PackageNotFoundError
-from importlib.metadata import version
-
-try:
-    __version__ = version("nat_sandbox_agent")
-except PackageNotFoundError:
-    __version__ = "unknown"
+__version__ = "0.1.0"
 
 # Import registration to enable NAT component discovery
-from . import register
-
-__all__ = ["register", "__version__"]
+from nat_sandbox_agent import register  # noqa: F401

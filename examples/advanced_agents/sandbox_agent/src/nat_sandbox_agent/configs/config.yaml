@@ -72,3 +72,10 @@ general:
       allow_headers:
         - "*"
 
+  # Telemetry configuration for observability (optional)
+  telemetry:
+    tracing:
+      phoenix:
+        _type: phoenix
+        project: "sandbox-agent"
+        endpoint: "http://localhost:6006/v1/traces"     

@@ -12,9 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Tests for host-side tools (web_search, youtube_transcript)."""
 
-from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -57,15 +57,17 @@ class TestHostWebSearchTool:
         tool = HostWebSearchTool(api_key="test-key")
 
         mock_client = MagicMock()
-        mock_client.search = AsyncMock(return_value={
-            "results": [{
-                "title": "Test Result",
-                "url": "https://example.com",
-                "content": "This is a test snippet",
-                "score": 0.95,
-            }],
+        mock_client.search.return_value = {
+            "results": [
+                {
+                    "title": "Test Result",
+                    "url": "https://example.com",
+                    "content": "This is a test snippet",
+                    "score": 0.95,
+                }
+            ],
             "answer": "The answer is 42",
-        })
+        }
         tool._client = mock_client
 
         result = await tool.search("test query", num_results=5)
@@ -89,7 +91,7 @@ class TestHostWebSearchTool:
         tool = HostWebSearchTool(api_key="test-key")
 
         mock_client = MagicMock()
-        mock_client.search = AsyncMock(return_value={"results": [], "answer": None})
+        mock_client.search.return_value = {"results": [], "answer": None}
         tool._client = mock_client
 
         await tool.search("test", num_results=15)
@@ -106,7 +108,7 @@ class TestHostWebSearchTool:
         tool = HostWebSearchTool(api_key="test-key")
 
         mock_client = MagicMock()
-        mock_client.search = AsyncMock(side_effect=Exception("API error"))
+        mock_client.search.side_effect = Exception("API error")
         tool._client = mock_client
 
         result = await tool.search("test query")
@@ -190,7 +192,7 @@ class TestHostYouTubeTool:
         mock_errors.TranscriptsDisabled = Exception
 
         with patch.dict(
-                "sys.modules",
+            "sys.modules",
             {
                 "youtube_transcript_api": mock_api,
                 "youtube_transcript_api._errors": mock_errors,
@@ -206,15 +208,9 @@ class TestHostYouTubeTool:
     async def test_get_transcript_success(self):
         """Test successful transcript retrieval with mocked API."""
         mock_transcript_data = [
-            {
-                "text": "Hello world", "start": 0.0, "duration": 2.0
-            },
-            {
-                "text": "This is a test", "start": 2.0, "duration": 3.0
-            },
-            {
-                "text": "Video transcript", "start": 5.0, "duration": 2.0
-            },
+            {"text": "Hello world", "start": 0.0, "duration": 2.0},
+            {"text": "This is a test", "start": 2.0, "duration": 3.0},
+            {"text": "Video transcript", "start": 5.0, "duration": 2.0},
         ]
 
         mock_transcript = MagicMock()
@@ -228,18 +224,20 @@ class TestHostYouTubeTool:
         mock_api.YouTubeTranscriptApi.list_transcripts.return_value = mock_transcript_list
 
         mock_errors = MagicMock()
-        mock_errors.NoTranscriptFound = type("NoTranscriptFound", (Exception, ), {})
-        mock_errors.TranscriptsDisabled = type("TranscriptsDisabled", (Exception, ), {})
+        mock_errors.NoTranscriptFound = type("NoTranscriptFound", (Exception,), {})
+        mock_errors.TranscriptsDisabled = type("TranscriptsDisabled", (Exception,), {})
 
         with patch.dict(
-                "sys.modules",
+            "sys.modules",
             {
                 "youtube_transcript_api": mock_api,
                 "youtube_transcript_api._errors": mock_errors,
             },
         ):
             tool = HostYouTubeTool(max_output_chars=1000)
-            result = await tool.get_transcript("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+            result = await tool.get_transcript(
+                "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            )
 
         assert result["status"] == "success"
         assert result["video_id"] == "dQw4w9WgXcQ"
@@ -251,23 +249,23 @@ class TestHostYouTubeTool:
     @pytest.mark.asyncio
     async def test_get_transcript_disabled(self):
         """Test handling when transcripts are disabled."""
-
         # Create a proper exception class
         class TranscriptsDisabled(Exception):
-
             def __init__(self, video_id):
                 self.video_id = video_id
                 super().__init__(f"Transcripts disabled for {video_id}")
 
         mock_api = MagicMock()
-        mock_api.YouTubeTranscriptApi.list_transcripts.side_effect = TranscriptsDisabled("test-video-id")
+        mock_api.YouTubeTranscriptApi.list_transcripts.side_effect = TranscriptsDisabled(
+            "test-video-id"
+        )
 
         mock_errors = MagicMock()
-        mock_errors.NoTranscriptFound = type("NoTranscriptFound", (Exception, ), {})
+        mock_errors.NoTranscriptFound = type("NoTranscriptFound", (Exception,), {})
         mock_errors.TranscriptsDisabled = TranscriptsDisabled
 
         with patch.dict(
-                "sys.modules",
+            "sys.modules",
             {
                 "youtube_transcript_api": mock_api,
                 "youtube_transcript_api._errors": mock_errors,

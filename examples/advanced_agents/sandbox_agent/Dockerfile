@@ -63,6 +63,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
     # Document generation dependencies
     pandoc \
+    # PDF processing dependencies
+    poppler-utils \
+    # OCR dependencies
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    # Video/Audio processing dependencies
+    ffmpeg \
     # Clean up
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -100,7 +107,17 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pillow>=10.0.0 \
     # Utilities
     aiofiles>=23.0.0 \
-    python-dateutil>=2.8.0
+    python-dateutil>=2.8.0 \
+    # YouTube video downloading
+    yt-dlp>=2024.1.0 \
+    # PDF processing
+    pdf2image>=1.16.0 \
+    pdfplumber>=0.10.0 \
+    pypdf>=3.0.0 \
+    # OCR
+    pytesseract>=0.3.10 \
+    # Mathematical computation verification
+    sympy>=1.12
 
 # Create shared directory for Playwright browsers (accessible by all users)
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
@@ -108,12 +125,6 @@ RUN mkdir -p ${PLAYWRIGHT_BROWSERS_PATH} && chmod 755 ${PLAYWRIGHT_BROWSERS_PATH
 
 # Install Playwright browser (Chromium only to reduce size)
 RUN playwright install chromium --with-deps
-
-# Create non-root user for security (created early so we can chown)
-RUN useradd -m -s /bin/bash sandbox
-
-# Change ownership of Playwright browsers to sandbox user
-RUN chown -R sandbox:sandbox ${PLAYWRIGHT_BROWSERS_PATH}
 
 # Create workspace directories
 RUN mkdir -p /workspace/input \
@@ -124,8 +135,9 @@ RUN mkdir -p /workspace/input \
 # Set working directory
 WORKDIR /workspace
 
-# Set workspace ownership to sandbox user
-RUN chown -R sandbox:sandbox /workspace
+# Create non-root user for security
+RUN useradd -m -s /bin/bash sandbox && \
+    chown -R sandbox:sandbox /workspace
 
 # Switch to non-root user
 USER sandbox

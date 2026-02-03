@@ -176,24 +176,18 @@ class DockerSandbox(BaseSandbox):
 
         logger.debug(f"Executing command: {command[:100]}...")
 
-        # Use Linux timeout command to ensure container-side process termination.
-        # Without this, asyncio.wait_for() only cancels the Python await,
-        # but the process inside the container continues running as orphan.
-        timeout_int = int(timeout)
-        wrapped_command = f"timeout {timeout_int} /bin/bash -c {shlex.quote(command)}"
-
         try:
             exec_result = await asyncio.wait_for(
                 asyncio.get_running_loop().run_in_executor(
                     None,
                     lambda: self._container.exec_run(
-                        cmd=wrapped_command,
+                        cmd=f"/bin/bash -c {shlex.quote(command)}",
                         workdir=working_dir,
                         environment=env,
                         demux=True,
                     ),
                 ),
-                timeout=timeout + 5,  # Give container timeout a chance to fire first
+                timeout=timeout,
             )
 
             exit_code = exec_result.exit_code
@@ -201,15 +195,6 @@ class DockerSandbox(BaseSandbox):
 
             stdout = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
             stderr = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
-
-            # Linux timeout command returns 124 when the command times out
-            if exit_code == 124:
-                logger.warning(f"Command timed out after {timeout_int}s: {command[:50]}...")
-                return CommandResult(
-                    exit_code=-1,
-                    stdout=stdout,
-                    stderr=f"Command timed out after {timeout_int} seconds\n{stderr}".strip(),
-                )
 
             return CommandResult(
                 exit_code=exit_code,
@@ -225,14 +210,14 @@ class DockerSandbox(BaseSandbox):
                 stderr=f"Command timed out after {timeout} seconds",
             )
         except ContainerError as e:
-            logger.exception("Container error")
+            logger.error(f"Container error: {e}")
             return CommandResult(
                 exit_code=e.exit_status,
                 stdout="",
                 stderr=str(e),
             )
         except Exception as e:
-            logger.exception("Command execution failed")
+            logger.error(f"Command execution failed: {e}")
             return CommandResult(
                 exit_code=-1,
                 stdout="",
@@ -244,9 +229,10 @@ class DockerSandbox(BaseSandbox):
         if not self._container:
             raise RuntimeError("Sandbox not started")
 
-        def _extract_from_archive():
-            """Synchronous helper to fetch and extract file from container."""
-            bits, _ = self._container.get_archive(path)
+        try:
+            bits, _ = await asyncio.get_running_loop().run_in_executor(
+                None, lambda: self._container.get_archive(path)
+            )
 
             # Extract file content from tar archive
             tar_stream = io.BytesIO()
@@ -261,14 +247,8 @@ class DockerSandbox(BaseSandbox):
                     return file_obj.read().decode("utf-8", errors="replace")
                 raise FileNotFoundError(f"File not found: {path}")
 
-        try:
-            # Wrap all blocking I/O in run_in_executor
-            return await asyncio.get_running_loop().run_in_executor(
-                None, _extract_from_archive
-            )
-
         except NotFound:
-            raise FileNotFoundError(f"File not found: {path}") from None
+            raise FileNotFoundError(f"File not found: {path}")
         except Exception as e:
             logger.error(f"Failed to read file {path}: {e}")
             raise
@@ -292,8 +272,8 @@ class DockerSandbox(BaseSandbox):
             # Get directory path
             dir_path = "/".join(path.split("/")[:-1]) or "/"
 
-            # Ensure directory exists (shell-escape to prevent injection)
-            await self.run_command(f"mkdir -p {shlex.quote(dir_path)}")
+            # Ensure directory exists
+            await self.run_command(f"mkdir -p {dir_path}")
 
             # Upload the tar archive
             await asyncio.get_running_loop().run_in_executor(

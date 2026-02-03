@@ -29,12 +29,15 @@ def create_all_tools(
     tavily_api_key: str | None = None,
     max_output_chars: int = DEFAULT_MAX_OUTPUT_CHARS,
     include_tools: list[str] | None = None,
+    include_advanced_tools: bool = False,
 ) -> list[StructuredTool]:
     """Create all tools (sandbox + host).
 
     This function combines:
     - Sandbox tools: shell, python, file_read, file_write, web_browse
     - Host tools: web_search, youtube_transcript
+    - Advanced tools (optional): extract_table, extract_list, verify_extraction,
+                                 verify_calculation, verify_formula, trace_reasoning
 
     Args:
         sandbox: Sandbox instance for sandbox tools.
@@ -42,14 +45,19 @@ def create_all_tools(
         max_output_chars: Maximum characters for tool output truncation.
         include_tools: Optional list of tool names to include.
             If None, all tools are included.
+        include_advanced_tools: Whether to include advanced tools for
+            structured data extraction and calculation verification.
+            These tools help reduce evidence_extraction and reasoning_error failures.
 
     Returns:
         Combined list of all tools.
     """
     # Sandbox tools (shell, python, file_read, file_write, web_browse)
+    # Plus optional advanced tools (extract_table, verify_calculation, etc.)
     sandbox_tools = create_sandbox_tools(
         sandbox=sandbox,
         max_output_chars=max_output_chars,
+        include_advanced_tools=include_advanced_tools,
     )
 
     # Host tools (web_search, youtube_transcript)
@@ -65,14 +73,17 @@ def create_all_tools(
 
     return list(all_tools.values())
 
-def get_tool_descriptions() -> str:
+def get_tool_descriptions(include_advanced: bool = False) -> str:
     """Get formatted descriptions of all available tools.
+
+    Args:
+        include_advanced: Whether to include advanced tools in descriptions.
 
     Returns:
         Formatted string with tool names and descriptions.
     """
     tools_info = [
-        # Sandbox tools
+        # Core sandbox tools
         ("shell", "Execute bash commands for system operations"),
         ("python", "Execute Python code for data processing and analysis"),
         ("file_read", "Read file contents from the sandbox"),
@@ -82,6 +93,18 @@ def get_tool_descriptions() -> str:
         ("web_search", "Search the web using Tavily"),
         ("youtube_transcript", "Get transcript from YouTube videos"),
     ]
+
+    if include_advanced:
+        tools_info.extend([
+            # Advanced extraction tools
+            ("extract_table", "Extract tables from HTML/Markdown content"),
+            ("extract_list", "Extract lists from HTML/Markdown content"),
+            ("verify_extraction", "Verify extracted data against source"),
+            # Calculation verification tools
+            ("verify_calculation", "Verify mathematical calculations"),
+            ("verify_formula", "Verify calculations using known formulas"),
+            ("trace_reasoning", "Trace and analyze reasoning chains"),
+        ])
 
     lines = ["Available tools:"]
     for name, desc in tools_info:

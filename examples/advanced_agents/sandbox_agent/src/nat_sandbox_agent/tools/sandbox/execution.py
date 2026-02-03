@@ -63,7 +63,7 @@ async def execute_shell(
     Returns:
         Dict with status, stdout, stderr, and exit_code.
     """
-    logger.info(f"Executing shell command: {command[:20]}... ({len(command)} chars)")
+    logger.info(f"Executing shell command: {command[:100]}...")
 
     result = await executor.sandbox.run_command(
         command=command,
@@ -96,16 +96,7 @@ async def execute_python(
     logger.info(f"Executing Python code ({len(code)} chars)")
 
     # Write code to a temp file for better error messages
-    try:
-        await executor.sandbox.write_file(DEFAULT_SCRIPT_PATH, code)
-    except Exception as e:
-        logger.exception("Failed to write script file")
-        return {
-            "status": "error",
-            "stdout": "",
-            "stderr": executor.truncate(str(e)),
-            "generated_files": [],
-        }
+    await executor.sandbox.write_file(DEFAULT_SCRIPT_PATH, code)
 
     result = await executor.sandbox.run_command(
         command=f"cd {WORKSPACE_ROOT} && python3 {DEFAULT_SCRIPT_PATH}",

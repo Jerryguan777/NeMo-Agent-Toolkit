@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Tests for workflow registration configuration."""
 
 import pytest
@@ -55,7 +56,9 @@ class TestDockerSandboxConfig:
 
     def test_volumes_config(self):
         """Test volume mounting configuration."""
-        config = DockerSandboxConfig(volumes={"/host/path": "/container/path"}, )
+        config = DockerSandboxConfig(
+            volumes={"/host/path": "/container/path"},
+        )
 
         assert config.volumes == {"/host/path": "/container/path"}
 

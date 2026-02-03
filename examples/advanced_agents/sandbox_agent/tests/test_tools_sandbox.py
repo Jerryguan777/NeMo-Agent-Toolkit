@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Tests for sandbox-side tools (shell, python, file_read, file_write, web_browse)."""
 
 from unittest.mock import AsyncMock
@@ -75,15 +76,14 @@ class TestSandboxToolExecutor:
     async def test_list_generated_files_success(self, mock_sandbox):
         """Test listing generated files using shell command."""
         mock_sandbox.run_command = AsyncMock(
-            return_value=CommandResult(exit_code=0, stdout="output.txt\ndata.json\n", stderr=""))
+            return_value=CommandResult(exit_code=0, stdout="output.txt\ndata.json\n", stderr="")
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         files = await executor.list_generated_files()
 
         assert files == ["/workspace/output/output.txt", "/workspace/output/data.json"]
-        mock_sandbox.run_command.assert_called_once_with(
-            "ls -1 /workspace/output", timeout=120
-        )
+        mock_sandbox.run_command.assert_called_once_with("ls -1 /workspace/output")
 
     @pytest.mark.asyncio
     async def test_list_generated_files_handles_exception(self, mock_sandbox):
@@ -99,7 +99,8 @@ class TestSandboxToolExecutor:
     async def test_list_generated_files_empty_on_error(self, mock_sandbox):
         """Test that list_generated_files returns empty list on command failure."""
         mock_sandbox.run_command = AsyncMock(
-            return_value=CommandResult(exit_code=1, stdout="", stderr="ls: cannot access"))
+            return_value=CommandResult(exit_code=1, stdout="", stderr="ls: cannot access")
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         files = await executor.list_generated_files()
@@ -114,7 +115,8 @@ class TestShellTool:
     async def test_execute_shell_success(self, mock_sandbox):
         """Test successful shell command execution."""
         mock_sandbox.run_command = AsyncMock(
-            return_value=CommandResult(exit_code=0, stdout="file1.txt\nfile2.py", stderr=""))
+            return_value=CommandResult(exit_code=0, stdout="file1.txt\nfile2.py", stderr="")
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         result = await execute_shell(executor, "ls -la", "/workspace")
@@ -127,7 +129,8 @@ class TestShellTool:
     async def test_execute_shell_failure(self, mock_sandbox):
         """Test shell command failure."""
         mock_sandbox.run_command = AsyncMock(
-            return_value=CommandResult(exit_code=1, stdout="", stderr="Command not found"))
+            return_value=CommandResult(exit_code=1, stdout="", stderr="Command not found")
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         result = await execute_shell(executor, "invalid_command")
@@ -139,7 +142,9 @@ class TestShellTool:
     @pytest.mark.asyncio
     async def test_execute_shell_respects_working_dir(self, mock_sandbox):
         """Test that working directory is passed correctly."""
-        mock_sandbox.run_command = AsyncMock(return_value=CommandResult(exit_code=0, stdout="", stderr=""))
+        mock_sandbox.run_command = AsyncMock(
+            return_value=CommandResult(exit_code=0, stdout="", stderr="")
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         await execute_shell(executor, "pwd", working_dir="/custom/dir")
@@ -152,7 +157,9 @@ class TestShellTool:
     async def test_execute_shell_truncates_output(self, mock_sandbox):
         """Test that long output is truncated."""
         long_output = "X" * 20000
-        mock_sandbox.run_command = AsyncMock(return_value=CommandResult(exit_code=0, stdout=long_output, stderr=""))
+        mock_sandbox.run_command = AsyncMock(
+            return_value=CommandResult(exit_code=0, stdout=long_output, stderr="")
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox, max_output_chars=100)
 
         result = await execute_shell(executor, "cat bigfile.txt")
@@ -177,10 +184,12 @@ class TestPythonTool:
         """Test successful Python code execution."""
         mock_sandbox.write_file = AsyncMock()
         # First call is for listing files, second is for running the script
-        mock_sandbox.run_command = AsyncMock(side_effect=[
-            CommandResult(exit_code=0, stdout="42", stderr=""),  # python execution
-            CommandResult(exit_code=0, stdout="result.txt\n", stderr=""),  # ls for generated files
-        ])
+        mock_sandbox.run_command = AsyncMock(
+            side_effect=[
+                CommandResult(exit_code=0, stdout="42", stderr=""),  # python execution
+                CommandResult(exit_code=0, stdout="result.txt\n", stderr=""),  # ls for generated files
+            ]
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         result = await execute_python(executor, "print(6 * 7)")
@@ -193,10 +202,12 @@ class TestPythonTool:
     async def test_execute_python_writes_script(self, mock_sandbox):
         """Test that Python code is written to script file."""
         mock_sandbox.write_file = AsyncMock()
-        mock_sandbox.run_command = AsyncMock(side_effect=[
-            CommandResult(exit_code=0, stdout="", stderr=""),  # python execution
-            CommandResult(exit_code=0, stdout="", stderr=""),  # ls for generated files
-        ])
+        mock_sandbox.run_command = AsyncMock(
+            side_effect=[
+                CommandResult(exit_code=0, stdout="", stderr=""),  # python execution
+                CommandResult(exit_code=0, stdout="", stderr=""),  # ls for generated files
+            ]
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         code = "print('hello')"
@@ -211,14 +222,16 @@ class TestPythonTool:
     async def test_execute_python_error(self, mock_sandbox):
         """Test Python execution with error."""
         mock_sandbox.write_file = AsyncMock()
-        mock_sandbox.run_command = AsyncMock(side_effect=[
-            CommandResult(
-                exit_code=1,
-                stdout="",
-                stderr="NameError: name 'undefined_var' is not defined",
-            ),  # python execution error
-            CommandResult(exit_code=0, stdout="", stderr=""),  # ls for generated files
-        ])
+        mock_sandbox.run_command = AsyncMock(
+            side_effect=[
+                CommandResult(
+                    exit_code=1,
+                    stdout="",
+                    stderr="NameError: name 'undefined_var' is not defined",
+                ),  # python execution error
+                CommandResult(exit_code=0, stdout="", stderr=""),  # ls for generated files
+            ]
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         result = await execute_python(executor, "print(undefined_var)")
@@ -319,12 +332,16 @@ class TestFileWriteTool:
         assert result["path"] == "/workspace/output.txt"
         assert result["size"] == 11
 
-        mock_sandbox.write_file.assert_called_once_with("/workspace/output.txt", "Hello World")
+        mock_sandbox.write_file.assert_called_once_with(
+            "/workspace/output.txt", "Hello World"
+        )
 
     @pytest.mark.asyncio
     async def test_write_file_error(self, mock_sandbox):
         """Test file write error handling."""
-        mock_sandbox.write_file = AsyncMock(side_effect=PermissionError("Cannot write to directory"))
+        mock_sandbox.write_file = AsyncMock(
+            side_effect=PermissionError("Cannot write to directory")
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         result = await write_file(executor, "/workspace/readonly/file.txt", "content")
@@ -366,7 +383,9 @@ class TestWebBrowseTool:
             "content": "This is example content.",
         })
         mock_sandbox.write_file = AsyncMock()
-        mock_sandbox.run_command = AsyncMock(return_value=CommandResult(exit_code=0, stdout=mock_result, stderr=""))
+        mock_sandbox.run_command = AsyncMock(
+            return_value=CommandResult(exit_code=0, stdout=mock_result, stderr="")
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         from nat_sandbox_agent.tools.sandbox.browser import web_browse
@@ -391,7 +410,9 @@ class TestWebBrowseTool:
             "content": "Selected content only",
         })
         mock_sandbox.write_file = AsyncMock()
-        mock_sandbox.run_command = AsyncMock(return_value=CommandResult(exit_code=0, stdout=mock_result, stderr=""))
+        mock_sandbox.run_command = AsyncMock(
+            return_value=CommandResult(exit_code=0, stdout=mock_result, stderr="")
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         from nat_sandbox_agent.tools.sandbox.browser import web_browse
@@ -404,7 +425,11 @@ class TestWebBrowseTool:
     async def test_web_browse_error(self, mock_sandbox):
         """Test web browse error handling."""
         mock_sandbox.write_file = AsyncMock()
-        mock_sandbox.run_command = AsyncMock(return_value=CommandResult(exit_code=1, stdout="", stderr="Network error"))
+        mock_sandbox.run_command = AsyncMock(
+            return_value=CommandResult(
+                exit_code=1, stdout="", stderr="Network error"
+            )
+        )
         executor = SandboxToolExecutor(sandbox=mock_sandbox)
 
         from nat_sandbox_agent.tools.sandbox.browser import web_browse

@@ -17,7 +17,6 @@
 
 import asyncio
 import logging
-import shlex
 
 from nat_sandbox_agent.sandbox.base import WORKSPACE_INIT_COMMAND
 from nat_sandbox_agent.sandbox.base import BaseSandbox
@@ -32,7 +31,7 @@ class DaytonaSandbox(BaseSandbox):
     This sandbox uses the Daytona cloud service to provide isolated
     execution environments.
 
-    Note: Requires `daytona-sdk` package to be installed.
+    Note: Requires daytona-sdk package to be installed.
     """
 
     DEFAULT_IMAGE = "daytonaio/workspace:latest"
@@ -110,10 +109,8 @@ class DaytonaSandbox(BaseSandbox):
                 auto_stop_interval=self._auto_stop_interval,
             )
 
-            # Create and start the sandbox (wrap sync call to avoid blocking)
-            self._sandbox = await asyncio.get_running_loop().run_in_executor(
-                None, lambda: client.create(params)
-            )
+            # Create and start the sandbox
+            self._sandbox = client.create(params)
 
             # Initialize workspace directories
             await self.run_command(WORKSPACE_INIT_COMMAND)
@@ -129,10 +126,7 @@ class DaytonaSandbox(BaseSandbox):
         if self._sandbox:
             logger.info(f"Cleaning up Daytona sandbox: {self._sandbox.id}")
             try:
-                # Wrap sync call to avoid blocking
-                await asyncio.get_running_loop().run_in_executor(
-                    None, self._sandbox.delete
-                )
+                self._sandbox.delete()
                 self._sandbox = None
             except Exception as e:
                 logger.error(f"Failed to cleanup Daytona sandbox: {e}")
@@ -182,7 +176,7 @@ class DaytonaSandbox(BaseSandbox):
                 stderr=f"Command timed out after {timeout} seconds",
             )
         except Exception as e:
-            logger.exception("Command execution failed")
+            logger.error(f"Command execution failed: {e}")
             return CommandResult(
                 exit_code=-1,
                 stdout="",
@@ -195,15 +189,11 @@ class DaytonaSandbox(BaseSandbox):
             raise RuntimeError("Sandbox not started")
 
         try:
-            # Wrap sync call to avoid blocking
-            # Daytona SDK uses download_file() which returns bytes
-            data = await asyncio.get_running_loop().run_in_executor(
-                None, lambda: self._sandbox.fs.download_file(path)
-            )
-            return data.decode("utf-8", errors="replace")
+            content = self._sandbox.fs.read_file(path)
+            return content
         except Exception as e:
             if "not found" in str(e).lower():
-                raise FileNotFoundError(f"File not found: {path}") from None
+                raise FileNotFoundError(f"File not found: {path}")
             logger.error(f"Failed to read file {path}: {e}")
             raise
 
@@ -213,16 +203,12 @@ class DaytonaSandbox(BaseSandbox):
             raise RuntimeError("Sandbox not started")
 
         try:
-            # Ensure parent directory exists (shell-escape to prevent injection)
+            # Ensure parent directory exists
             dir_path = "/".join(path.split("/")[:-1])
             if dir_path:
-                await self.run_command(f"mkdir -p {shlex.quote(dir_path)}")
+                await self.run_command(f"mkdir -p {dir_path}")
 
-            # Wrap sync call to avoid blocking
-            # Daytona SDK uses upload_file(data, path) which takes bytes
-            await asyncio.get_running_loop().run_in_executor(
-                None, lambda: self._sandbox.fs.upload_file(content.encode("utf-8"), path)
-            )
+            self._sandbox.fs.write_file(path, content)
         except Exception as e:
             logger.error(f"Failed to write file {path}: {e}")
             raise

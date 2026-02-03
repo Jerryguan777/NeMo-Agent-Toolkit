@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Integration tests for Docker sandbox.
 
 These tests require Docker to be running and will create real containers.
@@ -43,7 +44,6 @@ pytestmark = [
     pytest.mark.integration,
     pytest.mark.asyncio,
 ]
-
 
 # Use a fixture-based skip instead of pytestmark for conditional skipping
 @pytest.fixture(autouse=True)
@@ -238,7 +238,9 @@ class TestDockerSandboxNetwork:
     async def test_network_access(self, running_sandbox):
         """Test that sandbox has network access."""
         # Check DNS resolution using a simple command
-        result = await running_sandbox.run_command("getent hosts google.com")
+        result = await running_sandbox.run_command(
+            "getent hosts google.com"
+        )
 
         # Should succeed with network enabled
         assert result.exit_code == 0

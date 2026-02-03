@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Pytest configuration and fixtures for sandbox agent tests."""
 
 import asyncio
@@ -44,7 +45,9 @@ def mock_sandbox() -> MagicMock:
     sandbox = MagicMock(spec=BaseSandbox)
 
     # Mock command execution
-    sandbox.run_command = AsyncMock(return_value=CommandResult(exit_code=0, stdout="output", stderr=""))
+    sandbox.run_command = AsyncMock(
+        return_value=CommandResult(exit_code=0, stdout="output", stderr="")
+    )
 
     # Mock file operations
     sandbox.read_file = AsyncMock(return_value="file content")

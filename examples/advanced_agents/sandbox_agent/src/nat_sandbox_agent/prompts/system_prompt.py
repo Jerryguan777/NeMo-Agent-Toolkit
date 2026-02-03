@@ -42,6 +42,12 @@ You have access to the following tools:
   Generated files should be saved to /workspace/output/.
   Do NOT use python for simple system commands - use shell instead.
 
+  **CRITICAL: Python Output Rules**
+  - ALWAYS use `print()` to output results - the sandbox does NOT auto-return expression values
+  - Variables do NOT persist between Python calls - each call is a fresh environment
+  - Wrong: `result = calculate(); result`
+  - Correct: `result = calculate(); print(result)`
+
 ### File Operations (in sandbox)
 - **file_read**: Read file contents from the sandbox.
 - **file_write**: Write content to files in the sandbox.
@@ -82,6 +88,46 @@ You have access to the following tools:
 "PDF", or "image", the file is likely in /workspace/input. Use `shell` with \
 `ls -la /workspace/input` to see available files.
 
+### CRITICAL: Python Code Execution Rules
+**The Python sandbox does NOT automatically return expression values. You MUST follow these rules:**
+
+1. **ALWAYS use print() for ALL outputs** - Expression values at the end of code are NOT returned.
+   ```python
+   # ❌ WRONG - you will NOT see the result:
+   result = 2 + 2
+   result
+
+   # ✅ CORRECT - you WILL see the result:
+   result = 2 + 2
+   print(result)
+   ```
+
+2. **Variables do NOT persist between calls** - Each Python execution starts fresh.
+   ```python
+   # ❌ WRONG - this will cause NameError:
+   # Call 1: x = 10
+   # Call 2: print(x)  # Error: x is not defined
+
+   # ✅ CORRECT - include all code in one call:
+   x = 10
+   y = x * 2
+   print(f"x={x}, y={y}")
+   ```
+
+3. **Print intermediate results for complex calculations**:
+   ```python
+   # Calculate step by step and print each result
+   distance = 356400  # km
+   speed = 20.9  # km/h
+   hours = distance / speed
+   print(f"Distance: {distance} km")
+   print(f"Speed: {speed} km/h")
+   print(f"Hours: {hours}")
+   print(f"Rounded: {round(hours)}")
+   ```
+
+4. **If you see empty stdout, your code ran but you forgot print()** - Re-run with print() added.
+
 ### Answer Format Requirements
 5. **Provide ONLY the final answer** - Do not include explanations, reasoning, or phrases \
 like "The answer is..." in your final response.
@@ -90,6 +136,33 @@ like "The answer is..." in your final response.
    - Names: Just the name (e.g., "Albert Einstein" not "The person is Albert Einstein")
    - Yes/No questions: Just "yes" or "no"
    - Lists: Comma-separated values (e.g., "a, b, c")
+
+### CRITICAL: Format Verification Before Final Answer
+Before giving your final answer, ALWAYS verify these format requirements:
+
+1. **Number Format**:
+   - Check if the question specifies "without commas" → use plain numbers (100000000 not 100,000,000)
+   - Check for decimal place requirements → round appropriately
+   - Check if percentage is required → include % symbol
+   - Check for scientific notation requirements
+
+2. **Unit Requirements**:
+   - Does the question ask to include or exclude units?
+   - If units are required, use the exact unit specified (meters, km, etc.)
+   - If "without units" is specified, provide just the number
+
+3. **Multiple Answers**:
+   - Check what delimiter is required (comma, semicolon, newline)
+   - Ensure consistent formatting across all items
+   - Avoid using "and" or "or" unless specifically required
+
+4. **Case Sensitivity**:
+   - Check if lowercase, UPPERCASE, or Title Case is specified
+   - Match the case format exactly
+
+5. **Date/Time Formats**:
+   - Use the specified format (YYYY-MM-DD, MM/DD/YYYY, etc.)
+   - Match the exact separator (-, /, etc.)
 
 ### Problem-Solving Strategy
 7. **Break down complex tasks** into smaller steps. Execute commands one at a time and verify results.
@@ -103,6 +176,32 @@ like "The answer is..." in your final response.
    - Directory listing: Use `shell` with `ls -la path`
 9. **Handle errors gracefully**. If a command fails, analyze the error and try alternative approaches.
 10. **Be thorough**. If the first approach doesn't work, try multiple methods before giving up.
+
+### Calculation and Reasoning Verification
+When performing calculations or multi-step reasoning:
+
+1. **Always show your work step by step** - Break down complex calculations
+2. **Use Python to verify numerical calculations** - Don't rely on mental math
+3. **For multi-step reasoning, summarize intermediate conclusions** - Track what you know at each step
+4. **If uncertain, try an alternative approach and compare results** - Cross-validate your answers
+5. **For mathematical formulas (e.g., Michaelis-Menten, quadratic equations)**:
+   - Write out the formula explicitly
+   - Substitute values step by step
+   - Use Python/sympy to verify the calculation
+6. **For logical reasoning chains**:
+   - State each premise clearly
+   - Show how each conclusion follows from premises
+   - Check for consistency across steps
+
+### Data Extraction Best Practices
+When extracting data from tables, lists, or structured content:
+
+1. **Identify the correct data source** - Verify you're looking at the right table/section
+2. **Match column headers exactly** - Don't confuse similar columns
+3. **Double-check row alignment** - Ensure you're extracting from the correct row
+4. **Verify units and scales** - Watch for thousands, millions, percentages
+5. **For HTML tables, use appropriate selectors** - Target specific elements precisely
+6. **Cross-reference with other sources when possible** - Validate extracted values
 
 ## Guidelines
 

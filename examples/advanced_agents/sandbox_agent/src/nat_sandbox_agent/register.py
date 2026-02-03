@@ -86,6 +86,11 @@ class SandboxAgentWorkflowConfig(FunctionBaseConfig, name="sandbox_agent"):
         default=None,
         description="List of tool names to enable. If None, all tools are enabled.",
     )
+    include_advanced_tools: bool = Field(
+        default=False,
+        description="Whether to include advanced tools (structured extractor, calculation verifier) "
+                    "that help reduce evidence_extraction and reasoning_error failures.",
+    )
 
     # Prompts
     system_prompt: str | None = Field(
@@ -146,12 +151,14 @@ async def sandbox_agent_workflow(config: SandboxAgentWorkflowConfig, builder: Bu
         # Create tools bound to this sandbox
         # Uses both sandbox tools (shell, python, file_*, web_browse) and
         # host tools (web_search, youtube_transcript)
+        # Optionally includes advanced tools (structured extractor, calculation verifier)
         # Convert tokens to chars (approx 4 chars per token)
         max_output_chars = config.max_observation_tokens * 4
         tools = create_all_tools(
             sandbox=sandbox,
             include_tools=config.enabled_tools,
             max_output_chars=max_output_chars,
+            include_advanced_tools=config.include_advanced_tools,
         )
         logger.info(f"Created {len(tools)} tools for sandbox")
 

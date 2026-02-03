@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Tests for Daytona sandbox implementation using mocks."""
 
 from unittest.mock import MagicMock
@@ -87,7 +88,7 @@ class TestDaytonaSandboxClient:
         mock_config = MagicMock()
 
         with patch.dict(
-                "sys.modules",
+            "sys.modules",
             {
                 "daytona_sdk": MagicMock(
                     Daytona=mock_daytona,
@@ -207,8 +208,7 @@ class TestDaytonaSandboxFileOps:
     @pytest.mark.asyncio
     async def test_read_file_success(self, sandbox_with_fs):
         """Test successful file read."""
-        # Daytona SDK download_file returns bytes
-        sandbox_with_fs._sandbox.fs.download_file.return_value = b"file content"
+        sandbox_with_fs._sandbox.fs.read_file.return_value = "file content"
 
         content = await sandbox_with_fs.read_file("/workspace/test.txt")
 
@@ -217,7 +217,7 @@ class TestDaytonaSandboxFileOps:
     @pytest.mark.asyncio
     async def test_read_file_not_found(self, sandbox_with_fs):
         """Test file not found error."""
-        sandbox_with_fs._sandbox.fs.download_file.side_effect = Exception("file not found")
+        sandbox_with_fs._sandbox.fs.read_file.side_effect = Exception("file not found")
 
         with pytest.raises(FileNotFoundError):
             await sandbox_with_fs.read_file("/workspace/nonexistent.txt")
@@ -231,5 +231,6 @@ class TestDaytonaSandboxFileOps:
 
         await sandbox_with_fs.write_file("/workspace/output/test.txt", "content")
 
-        # Daytona SDK upload_file takes (bytes, path)
-        sandbox_with_fs._sandbox.fs.upload_file.assert_called_once_with(b"content", "/workspace/output/test.txt")
+        sandbox_with_fs._sandbox.fs.write_file.assert_called_once_with(
+            "/workspace/output/test.txt", "content"
+        )

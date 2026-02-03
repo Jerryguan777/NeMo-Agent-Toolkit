@@ -60,13 +60,16 @@ class HostWebSearchTool:
         self._client = None
 
     def _get_client(self):
-        """Lazily initialize async Tavily client."""
+        """Lazily initialize Tavily client."""
         if self._client is None:
             if not self._api_key:
-                raise ValueError("TAVILY_API_KEY not set")
-            from tavily import AsyncTavilyClient
+                raise ValueError(
+                    "TAVILY_API_KEY not set. Please set the environment variable "
+                    "or pass api_key to the tool."
+                )
+            from tavily import TavilyClient
 
-            self._client = AsyncTavilyClient(api_key=self._api_key)
+            self._client = TavilyClient(api_key=self._api_key)
         return self._client
 
     async def search(self, query: str, num_results: int = 5) -> dict[str, Any]:
@@ -79,11 +82,11 @@ class HostWebSearchTool:
         Returns:
             Dict with status and search results.
         """
-        logger.info(f"Web search: query_len={len(query)}")
+        logger.info(f"Web search: {query}")
 
         try:
             client = self._get_client()
-            response = await client.search(
+            response = client.search(
                 query=query,
                 max_results=min(num_results, 10),
                 include_answer=True,
@@ -108,7 +111,7 @@ class HostWebSearchTool:
             }
 
         except Exception as e:
-            logger.exception("Web search error")
+            logger.error(f"Web search error: {e}")
             return {
                 "status": "error",
                 "error": str(e),

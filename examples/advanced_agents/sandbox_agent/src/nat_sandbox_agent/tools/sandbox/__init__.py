@@ -34,12 +34,21 @@ from nat_sandbox_agent.tools.sandbox.execution import create_shell_tool
 from nat_sandbox_agent.tools.sandbox.executor import SandboxToolExecutor
 from nat_sandbox_agent.tools.sandbox.file_ops import create_file_read_tool
 from nat_sandbox_agent.tools.sandbox.file_ops import create_file_write_tool
+from nat_sandbox_agent.tools.sandbox.structured_extractor import (
+    create_structured_extractor_tools,
+    StructuredDataExtractor,
+)
+from nat_sandbox_agent.tools.sandbox.calculation_verifier import (
+    create_calculation_verifier_tools,
+    CalculationVerifier,
+)
 
 
 def create_sandbox_tools(
     sandbox: BaseSandbox,
     max_output_chars: int = DEFAULT_MAX_OUTPUT_CHARS,
     include_tools: list[str] | None = None,
+    include_advanced_tools: bool = False,
 ) -> list[StructuredTool]:
     """Create all sandbox-side tools.
 
@@ -47,13 +56,12 @@ def create_sandbox_tools(
         sandbox: The sandbox instance to bind tools to.
         max_output_chars: Maximum characters for tool output truncation.
         include_tools: Optional list of tool names to include.
-            If None, all tools are included. If empty list, returns empty list.
+            If None, all tools are included.
+        include_advanced_tools: Whether to include advanced tools
+            (structured extractor, calculation verifier).
 
     Returns:
         List of sandbox tools.
-
-    Raises:
-        ValueError: If include_tools contains unknown tool names.
     """
     executor = SandboxToolExecutor(
         sandbox=sandbox,
@@ -68,24 +76,32 @@ def create_sandbox_tools(
         "web_browse": create_web_browse_tool(executor),
     }
 
-    if include_tools is not None:
-        # Validate tool names
-        unknown_tools = set(include_tools) - set(all_tools.keys())
-        if unknown_tools:
-            raise ValueError(
-                f"Unknown tool names: {unknown_tools}. "
-                f"Available tools: {list(all_tools.keys())}"
-            )
-        return [all_tools[name] for name in include_tools]
+    # Add advanced tools if requested
+    if include_advanced_tools:
+        extractor_tools = create_structured_extractor_tools(executor)
+        for tool in extractor_tools:
+            all_tools[tool.name] = tool
+
+        verifier_tools = create_calculation_verifier_tools(executor)
+        for tool in verifier_tools:
+            all_tools[tool.name] = tool
+
+    if include_tools:
+        return [all_tools[name] for name in include_tools if name in all_tools]
 
     return list(all_tools.values())
 
 __all__ = [
+    "create_sandbox_tools",
     "SandboxToolExecutor",
+    "create_shell_tool",
+    "create_python_tool",
     "create_file_read_tool",
     "create_file_write_tool",
-    "create_python_tool",
-    "create_sandbox_tools",
-    "create_shell_tool",
     "create_web_browse_tool",
+    # Advanced tools
+    "create_structured_extractor_tools",
+    "StructuredDataExtractor",
+    "create_calculation_verifier_tools",
+    "CalculationVerifier",
 ]

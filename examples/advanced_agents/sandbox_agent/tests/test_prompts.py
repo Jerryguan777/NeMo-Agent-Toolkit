@@ -12,7 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Tests for system prompts."""
+
 
 from nat_sandbox_agent.prompts import SANDBOX_AGENT_SYSTEM_PROMPT
 from nat_sandbox_agent.prompts import get_system_prompt
