@@ -18,6 +18,25 @@
 import re
 
 
+# Single-word answers that should be normalized to Title Case
+TITLE_CASE_WORDS = {
+    # Yes/No answers
+    "yes": "Yes",
+    "no": "No",
+    "true": "True",
+    "false": "False",
+    # Directional answers
+    "left": "Left",
+    "right": "Right",
+    "up": "Up",
+    "down": "Down",
+    "north": "North",
+    "south": "South",
+    "east": "East",
+    "west": "West",
+}
+
+
 def clean_answer(response: str) -> str:
     """Clean and extract the final answer from agent response.
 
@@ -69,4 +88,11 @@ def clean_answer(response: str) -> str:
         # Check if the question expects just a number
         text = number_match.group(1)
 
-    return text.strip()
+    text = text.strip()
+
+    # Normalize case for single-word answers that commonly need Title Case
+    text_lower = text.lower()
+    if text_lower in TITLE_CASE_WORDS:
+        text = TITLE_CASE_WORDS[text_lower]
+
+    return text

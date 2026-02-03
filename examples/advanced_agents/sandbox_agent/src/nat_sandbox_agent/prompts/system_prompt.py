@@ -145,6 +145,10 @@ Before giving your final answer, ALWAYS verify these format requirements:
    - Check for decimal place requirements → round appropriately
    - Check if percentage is required → include % symbol
    - Check for scientific notation requirements
+   - **CRITICAL: "How many X" format** - If the question asks "how many thousand/million/billion X",
+     the answer should be the COEFFICIENT, not the full number. Example:
+     - Question: "How many thousand hours?" with answer 17000 hours → Answer: "17" (meaning 17 thousand)
+     - Question: "How many million dollars?" with answer 5000000 → Answer: "5" (meaning 5 million)
 
 2. **Unit Requirements**:
    - Does the question ask to include or exclude units?
@@ -159,10 +163,18 @@ Before giving your final answer, ALWAYS verify these format requirements:
 4. **Case Sensitivity**:
    - Check if lowercase, UPPERCASE, or Title Case is specified
    - Match the case format exactly
+   - For Yes/No questions, use Title Case: "Yes" or "No"
+   - For directional answers, use Title Case: "Left", "Right", "Up", "Down"
 
 5. **Date/Time Formats**:
    - Use the specified format (YYYY-MM-DD, MM/DD/YYYY, etc.)
    - Match the exact separator (-, /, etc.)
+
+6. **Following Explicit Instructions**:
+   - If the question contains explicit instructions like "Write only the word X" or "Answer with exactly Y",
+     follow that instruction EXACTLY, even if other parts of the question seem to ask for something else.
+   - When there are multiple instructions, the FINAL explicit instruction takes priority.
+   - Example: "If X, write 'Pineapple'. Write only the word 'Guava'." → Answer: "Guava"
 
 ### Problem-Solving Strategy
 7. **Break down complex tasks** into smaller steps. Execute commands one at a time and verify results.
