@@ -22,13 +22,15 @@ from nat_sandbox_agent.sandbox.docker_sandbox import DockerSandbox
 from nat_sandbox_agent.sandbox.factory import SandboxConfig
 from nat_sandbox_agent.sandbox.factory import SandboxType
 from nat_sandbox_agent.sandbox.factory import create_sandbox
+from nat_sandbox_agent.sandbox.factory import get_default_gaia_attachments_dir
 
 __all__ = [
     "BaseSandbox",
     "CommandResult",
-    "DaytonaSandbox",
     "DockerSandbox",
+    "DaytonaSandbox",
     "SandboxConfig",
     "SandboxType",
     "create_sandbox",
+    "get_default_gaia_attachments_dir",
 ]

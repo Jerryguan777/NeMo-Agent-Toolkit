@@ -34,11 +34,15 @@
 #   4. Run with custom output directory:
 #      EVAL_OUTPUT_DIR=.tmp/my_eval/ nat eval src/nat_sandbox_agent/configs/config_gaia.yaml
 #
+#   Output directories are auto-generated based on level and model, e.g.:
+#      .tmp/nat/sandbox_agent/gaia_eval_level1_gpt-5.2/
+#      .tmp/nat/sandbox_agent/gaia_eval_level2_meta/llama-3.3-70b-instruct/
+#
 # Environment Variables:
 #   - GAIA_LEVEL: GAIA difficulty level (1, 2, or 3). Default: 2
 #   - LLM_TYPE: LLM provider type (nim or openai). Default: nim
 #   - LLM_MODEL: Model name. Default: meta/llama-3.3-70b-instruct
-#   - EVAL_OUTPUT_DIR: Output directory. Default: .tmp/nat/sandbox_agent/gaia_eval/
+#   - EVAL_OUTPUT_DIR: Output directory. Default: .tmp/nat/sandbox_agent/gaia_eval_level{LEVEL}_{MODEL}/
 #   - MAX_CONCURRENCY: Parallel evaluation tasks. Default: 4
 #   - MAX_ITERATIONS: Max agent iterations per task. Default: 50
 #
@@ -46,7 +50,9 @@
 #   - NVIDIA_API_KEY or NGC_API_KEY: For NIM LLM access
 #   - OPENAI_API_KEY: For OpenAI models
 #   - TAVILY_API_KEY: For web search tool
-#   - GAIA_ATTACHMENTS_DIR: Absolute path to GAIA attachments directory (for volume mount)
+#
+# Note: GAIA attachments are automatically loaded from data/attachments/
+#       No need to set GAIA_ATTACHMENTS_DIR unless using a custom location.
 #
 # =============================================================================
 
@@ -78,14 +84,14 @@ workflow:
     cpu_limit: 4.0
     network_enabled: true
     # Mount GAIA attachments directory to sandbox
-    # Note: Set GAIA_ATTACHMENTS_DIR to absolute path of your attachments directory
+    # Uses data/attachments/ by default; override with GAIA_ATTACHMENTS_DIR env var
     volumes:
-      "${GAIA_ATTACHMENTS_DIR}": "/workspace/input"
+      "${GAIA_ATTACHMENTS_DIR:-}": "/workspace/input"
 
 # Evaluation Configuration
 eval:
   general:
-    output_dir: ${EVAL_OUTPUT_DIR:-.tmp/nat/sandbox_agent/gaia_eval/}
+    output_dir: ${EVAL_OUTPUT_DIR:-.tmp/nat/sandbox_agent/gaia_eval_level${GAIA_LEVEL:-2}_${LLM_MODEL:-llama}/}
     max_concurrency: ${MAX_CONCURRENCY:-4}
     dataset:
       _type: parquet

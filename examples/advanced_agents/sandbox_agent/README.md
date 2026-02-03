@@ -35,7 +35,7 @@ The Sandbox Agent executes tasks within secure, isolated Docker containers or Da
 ### Prerequisites
 
 - Docker (running daemon)
-- Python 3.11+
+- Python 3.10+
 - API keys (see Environment Variables below)
 
 ### Installation
@@ -70,7 +70,7 @@ export DAYTONA_API_KEY="your-daytona-api-key"
 
 **CLI Mode:**
 ```bash
-nat run --config_file configs/config.yaml --input “Write a Python program to print the first ten Fibonacci numbers.”
+nat run --config_file configs/config.yaml
 ```
 
 **Web UI Mode:**
@@ -201,13 +201,16 @@ The Sandbox Agent is configured for [GAIA benchmark](https://huggingface.co/data
 3. **Run evaluation:**
    ```bash
    # Level 2 (default)
-   GAIA_ATTACHMENTS_DIR=$(pwd)/data/attachments nat eval --config_file configs/config_gaia.yaml
+   nat eval --config_file configs/config_gaia.yaml
 
    # Specific level
-   GAIA_LEVEL=1 GAIA_ATTACHMENTS_DIR=$(pwd)/data/attachments nat eval --config_file configs/config_gaia.yaml
+   GAIA_LEVEL=1 nat eval --config_file configs/config_gaia.yaml
 
    # With different LLM
-   LLM_TYPE=openai LLM_MODEL=gpt-4o GAIA_ATTACHMENTS_DIR=$(pwd)/data/attachments nat eval --config_file configs/config_gaia.yaml
+   LLM_TYPE=openai LLM_MODEL=gpt-4o nat eval --config_file configs/config_gaia.yaml
+
+   # With custom attachments directory (optional)
+   GAIA_ATTACHMENTS_DIR=/path/to/attachments nat eval --config_file configs/config_gaia.yaml
    ```
 
 ### Evaluation Metrics
@@ -236,6 +239,29 @@ The Sandbox Agent is configured for [GAIA benchmark](https://huggingface.co/data
 | Level 3 | 26 | **15.38%** | Complex tasks |
 
 *Results depend on model capabilities, sandbox resources, and task types.*
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    Sandbox Agent Workflow                     │
+├──────────────────────────────────────────────────────────────┤
+│  User Request                                                 │
+│       ↓                                                       │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │                  LangGraph ReAct Loop                    │ │
+│  │  ┌──────────┐    ┌───────────┐    ┌─────────────────┐  │ │
+│  │  │  Agent   │───▶│   Tool    │───▶│    Sandbox      │  │ │
+│  │  │  Node    │◀───│   Node    │◀───│    Executor     │  │ │
+│  │  └──────────┘    └───────────┘    └─────────────────┘  │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                          ↓                                    │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │              Docker Container (Isolated)                 │ │
+│  │  /workspace/  │  Shell  │  Python  │  Browser  │  Files │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
+```
 
 ## Project Structure
 

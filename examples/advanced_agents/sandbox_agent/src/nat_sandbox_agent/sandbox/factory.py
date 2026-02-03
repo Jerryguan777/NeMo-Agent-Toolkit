@@ -17,6 +17,7 @@
 
 import os
 from enum import Enum
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel
@@ -26,6 +27,10 @@ from nat_sandbox_agent.sandbox.base import BaseSandbox
 
 # Environment variables to automatically pass to sandbox if set on host
 DEFAULT_PASS_ENV_VARS = ["TAVILY_API_KEY"]
+
+# Default GAIA attachments directory (relative to package)
+_PACKAGE_DIR = Path(__file__).parent.parent
+DEFAULT_GAIA_ATTACHMENTS_DIR = _PACKAGE_DIR / "data" / "attachments"
 
 
 class SandboxType(str, Enum):
@@ -192,6 +197,51 @@ def create_sandbox(config: SandboxConfig) -> BaseSandbox:
         raise ValueError(f"Unknown sandbox type: {config.type}")
 
 
+def get_default_gaia_attachments_dir() -> str:
+    """Get the default GAIA attachments directory path.
+
+    Returns:
+        Absolute path to the default attachments directory.
+    """
+    return str(DEFAULT_GAIA_ATTACHMENTS_DIR.resolve())
+
+
+def _resolve_volume_paths(volumes: dict[str, str] | None) -> dict[str, str] | None:
+    """Resolve volume paths, replacing empty/placeholder paths with defaults.
+
+    Args:
+        volumes: Volume mappings {host_path: container_path}.
+
+    Returns:
+        Resolved volume mappings with valid paths.
+    """
+    if not volumes:
+        return volumes
+
+    # Placeholders that indicate "use default"
+    default_placeholders = (
+        "",
+        "${GAIA_ATTACHMENTS_DIR}",
+        "${GAIA_ATTACHMENTS_DIR:-}",
+    )
+
+    resolved = {}
+    for host_path, container_path in volumes.items():
+        # Handle empty, undefined, or placeholder paths for /workspace/input
+        if container_path == "/workspace/input" and (
+            not host_path or host_path in default_placeholders
+        ):
+            # Use default GAIA attachments directory
+            default_path = get_default_gaia_attachments_dir()
+            if Path(default_path).exists():
+                resolved[default_path] = container_path
+            # Skip if default doesn't exist (no attachments needed)
+        else:
+            resolved[host_path] = container_path
+
+    return resolved if resolved else None
+
+
 def create_sandbox_from_dict(config_dict: dict) -> BaseSandbox:
     """Create a sandbox instance from a dictionary configuration.
 
@@ -203,6 +253,11 @@ def create_sandbox_from_dict(config_dict: dict) -> BaseSandbox:
         BaseSandbox: A sandbox instance ready to be started.
     """
     sandbox_type = config_dict.get("type", "docker")
+
+    # Resolve volume paths before creating config
+    if "volumes" in config_dict:
+        config_dict = config_dict.copy()
+        config_dict["volumes"] = _resolve_volume_paths(config_dict["volumes"])
 
     if sandbox_type == "docker":
         config = DockerSandboxConfig(**config_dict)
