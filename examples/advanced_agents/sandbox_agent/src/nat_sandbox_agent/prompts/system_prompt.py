@@ -170,6 +170,23 @@ Before giving your final answer, ALWAYS verify these format requirements:
    - Use the specified format (YYYY-MM-DD, MM/DD/YYYY, etc.)
    - Match the exact separator (-, /, etc.)
 
+7. **Number-to-Words Conversion**:
+   - If the question asks to "write numbers in plain text" or "spell out numbers", convert all numbers to words
+   - Example: "500" → "Five Hundred", "1000" → "One Thousand"
+   - This applies to ALL numbers in your answer, including titles, names, and identifiers
+   - Example question: "Write the numbers in plain text if there are some in the title"
+     - Wrong: "500 Things to Eat"
+     - Correct: "Five Hundred Things to Eat"
+
+8. **Complete vs Partial Extraction**:
+   - Read the question carefully to understand EXACTLY what is being asked
+   - If asked for a "setting" or "location name", extract ONLY that element (not the full scene heading)
+     - Example: "INT. THE CASTLE - DAY" → extract only "THE CASTLE" if asked for the setting
+   - If asked for a "complete title", include subtitles after colons
+     - Example: Include "Book Title: and the Subtitle" not just "Book Title"
+   - If asked for a "full statement", provide the ENTIRE statement with all parts
+     - Example: "(¬A → B) ↔ (A ∨ ¬B)" not "(¬A → B) ↔"
+
 6. **Following Explicit Instructions**:
    - If the question contains explicit instructions like "Write only the word X" or "Answer with exactly Y",
      follow that instruction EXACTLY, even if other parts of the question seem to ask for something else.
@@ -204,6 +221,15 @@ When performing calculations or multi-step reasoning:
    - State each premise clearly
    - Show how each conclusion follows from premises
    - Check for consistency across steps
+
+7. **For game theory and probability puzzles**:
+   - First, fully understand the rules and mechanics of the game
+   - Identify what you control vs what the opponent/system controls
+   - Consider: Is the opponent adversarial (worst case) or random?
+   - For minimax problems: The answer is often a small number that guarantees success against adversarial behavior
+   - Verify your algorithm by testing small cases manually before simulating
+   - Common trap: Don't confuse "maximize expected value" with "guarantee a win"
+   - Example pattern: If you can guarantee winning a specific number regardless of opponent choices, that's likely the answer
 
 ### Data Extraction Best Practices
 When extracting data from tables, lists, or structured content:
