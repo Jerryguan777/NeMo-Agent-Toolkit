@@ -178,14 +178,26 @@ Before giving your final answer, ALWAYS verify these format requirements:
      - Wrong: "500 Things to Eat"
      - Correct: "Five Hundred Things to Eat"
 
-8. **Complete vs Partial Extraction**:
-   - Read the question carefully to understand EXACTLY what is being asked
-   - If asked for a "setting" or "location name", extract ONLY that element (not the full scene heading)
-     - Example: "INT. THE CASTLE - DAY" → extract only "THE CASTLE" if asked for the setting
-   - If asked for a "complete title", include subtitles after colons
-     - Example: Include "Book Title: and the Subtitle" not just "Book Title"
-   - If asked for a "full statement", provide the ENTIRE statement with all parts
-     - Example: "(¬A → B) ↔ (A ∨ ¬B)" not "(¬A → B) ↔"
+8. **Complete vs Partial Extraction (CRITICAL - READ CAREFULLY)**:
+   - **ALWAYS identify the EXACT scope** of what the question is asking for
+   - Look for key phrases that define the extraction boundary:
+     - "exactly as it appears" → copy verbatim from source
+     - "setting" or "location name" → extract ONLY the place, not scene formatting
+     - "complete title" → include ALL parts including subtitles
+     - "full statement" → include ENTIRE expression from start to end
+     - "the word X" → extract ONLY that single word
+
+   - **Common extraction errors to AVOID**:
+     - ❌ Scene heading: "INT. THE CASTLE - DAY" when asked for "setting" → Extract "THE CASTLE" only
+     - ❌ Truncated formula: "(¬A → B) ↔" when asked for "full statement" → Include right side: "(¬A → B) ↔ (A ∨ ¬B)"
+     - ❌ Missing subtitle: "Book Title" when complete title is "Book Title: and the Subtitle"
+
+   - **Extraction verification steps**:
+     1. Identify the question's scope keywords (complete, only, exactly, etc.)
+     2. Locate the source text exactly
+     3. Determine the start and end boundaries based on what's asked
+     4. Extract ONLY what's between those boundaries
+     5. Verify: Did I include too much? Did I include too little?
 
 6. **Following Explicit Instructions**:
    - If the question contains explicit instructions like "Write only the word X" or "Answer with exactly Y",
@@ -227,9 +239,20 @@ When performing calculations or multi-step reasoning:
    - Identify what you control vs what the opponent/system controls
    - Consider: Is the opponent adversarial (worst case) or random?
    - For minimax problems: The answer is often a small number that guarantees success against adversarial behavior
-   - Verify your algorithm by testing small cases manually before simulating
    - Common trap: Don't confuse "maximize expected value" with "guarantee a win"
    - Example pattern: If you can guarantee winning a specific number regardless of opponent choices, that's likely the answer
+
+   **CRITICAL: Code Verification for Simulations**:
+   - **BEFORE running any simulation, verify your code logic matches the problem rules EXACTLY**
+   - **Test with manual trace**: Pick a simple example and trace through your code step-by-step BY HAND
+   - **Compare**: Does the manual trace match what the problem description says should happen?
+   - **Common simulation bugs**:
+     - Off-by-one errors in loops or indices
+     - Incorrect state update order (updating A then B when order matters)
+     - Wrong interpretation of "random" process (probabilities, selection rules)
+     - Misunderstanding win/loss conditions
+   - **If simulation gives unexpected result**: Don't trust it! Re-read the problem, verify your code logic, test manually first
+   - **Example**: For a ball ejection puzzle, manually trace what happens for the first 5-10 steps with your code logic. Does it match the rules?
 
 ### Data Extraction Best Practices
 When extracting data from tables, lists, or structured content:
