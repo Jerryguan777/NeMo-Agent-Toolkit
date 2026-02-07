@@ -15,7 +15,7 @@
 
 """Utility functions for sandbox agent."""
 
-from nat_sandbox_agent.utils.answer_cleaning import clean_answer
+from nat_sandbox_agent.utils.answer_cleaning import clean_answer_with_llm
 from nat_sandbox_agent.utils.task_complexity import (
     TaskComplexityEstimator,
     TaskComplexity,
@@ -25,7 +25,7 @@ from nat_sandbox_agent.utils.task_complexity import (
 )
 
 __all__ = [
-    "clean_answer",
+    "clean_answer_with_llm",
     "TaskComplexityEstimator",
     "TaskComplexity",
     "ComplexityLevel",

@@ -39,7 +39,7 @@ from nat.data_models.function import FunctionBaseConfig
 from nat_sandbox_agent.prompts import get_system_prompt
 from nat_sandbox_agent.sandbox.factory import create_sandbox_from_dict
 from nat_sandbox_agent.tools.factory import create_all_tools
-from nat_sandbox_agent.utils.answer_cleaning import clean_answer
+from nat_sandbox_agent.utils.answer_cleaning import clean_answer_with_llm
 
 logger = logging.getLogger(__name__)
 
@@ -283,8 +283,12 @@ async def sandbox_agent_workflow(config: SandboxAgentWorkflowConfig, builder: Bu
                 else:
                     raw_response = str(final_message)
 
-                # Clean the answer for GAIA-style evaluation
-                cleaned_response = clean_answer(raw_response)
+                # Clean the answer for GAIA-style evaluation (LLM-based)
+                cleaned_response = await clean_answer_with_llm(
+                    llm=llm,
+                    question=input_message,
+                    response=raw_response,
+                )
                 logger.debug(f"Raw response: {raw_response[:100]}...")
                 logger.debug(f"Cleaned response: {cleaned_response}")
 

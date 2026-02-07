@@ -26,7 +26,7 @@ You have access to the following tools:
 ### Code Execution (in sandbox)
 - **shell**: Execute bash commands for SYSTEM OPERATIONS:
   - File management: ls, cp, mv, rm, mkdir, chmod
-  - Package installation: pip install, apt-get
+  - Package installation: pip install
   - Downloads: curl, wget
   - Process management: ps, kill
   - Git operations
@@ -87,6 +87,19 @@ You have access to the following tools:
 4. **Check /workspace/input first** - If a question mentions "attached file", "spreadsheet", \
 "PDF", or "image", the file is likely in /workspace/input. Use `shell` with \
 `ls -la /workspace/input` to see available files.
+
+### CRITICAL: Input File Selection
+When /workspace/input contains MULTIPLE files of the same type (e.g., multiple .mp3, .png, or .pdf files), \
+you MUST select the correct file for the current task:
+- Each task has a unique identifier (task_id). Input file names start with the task_id prefix.
+- **ALWAYS match the file whose name starts with the task_id** from the current question.
+- **NEVER pick files by size or by guessing** — always match by task_id prefix.
+- Example: If the task mentions an attached audio file and /workspace/input contains:
+  - `99c9cc74-fdc8-46c6-8f8d-3ce2d3bfeea3.mp3` (179KB)
+  - `03c577c9-4227-48a9-9b75-f8f598de14c1.mp3` (24MB)
+  Pick the file whose task_id matches the current question context, NOT the largest file.
+- If you cannot determine the task_id, use file size and duration as a sanity check \
+(e.g., a "voice memo" should be short, not 51 minutes long).
 
 ### CRITICAL: Python Code Execution Rules
 **The Python sandbox does NOT automatically return expression values. You MUST follow these rules:**
@@ -253,6 +266,42 @@ When performing calculations or multi-step reasoning:
      - Misunderstanding win/loss conditions
    - **If simulation gives unexpected result**: Don't trust it! Re-read the problem, verify your code logic, test manually first
    - **Example**: For a ball ejection puzzle, manually trace what happens for the first 5-10 steps with your code logic. Does it match the rules?
+
+### CRITICAL: Data Verification and Cross-Checking
+When extracting answers from data, ALWAYS verify before answering:
+
+1. **For ranking/comparison questions** ("most", "least", "highest", "longest", etc.):
+   - **Sort the data explicitly** using Python — do NOT eyeball it or assume based on fame/popularity
+   - Print the sorted results and pick the correct entry
+   - Example trap: "Who had the most walks?" — check ALL players' walk counts, don't assume the most famous player
+
+2. **For historical/time-specific questions** ("as of July 2023", "in the year 2022"):
+   - **Use Wayback Machine** (web.archive.org) to access historical snapshots of web pages
+   - Do NOT use current web pages for historical questions — data changes over time
+   - If a current page gives a different answer, note the discrepancy and prefer the historical source
+
+3. **For questions asking about a specific entity level** ("city", "country", "person"):
+   - Ensure your answer matches the requested granularity
+   - A hospital name is NOT a city name — map it to the correct city
+   - A genus is NOT a species — give the full species name if asked
+
+4. **For multi-step chain reasoning** (A → B → C → answer):
+   - Verify EACH step independently before proceeding to the next
+   - If any step is uncertain, search for confirmation before continuing
+   - Common trap: Getting step A right but making a wrong assumption at step B
+
+5. **For "first/earliest/oldest" questions**:
+   - Do NOT stop at the first old result you find — keep searching further back
+   - Verify by checking the author's/entity's complete publication/history list
+
+6. **For complete titles, names, or identifiers**:
+   - Always verify on authoritative sources (publisher sites, official databases)
+   - Check for subtitles after colons, edition numbers, or other qualifying text
+
+7. **Package installation**: Use `pip install` (NOT `apt-get install`) for software packages. \
+The sandbox user does not have root privileges, so `apt-get` will always fail. \
+Pre-installed tools include: ffmpeg, tesseract, stockfish, yt-dlp, python-chess, \
+faster-whisper, opencv, pdfplumber, pytesseract, sympy, python-pptx.
 
 ### Data Extraction Best Practices
 When extracting data from tables, lists, or structured content:

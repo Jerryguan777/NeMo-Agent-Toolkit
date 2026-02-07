@@ -70,6 +70,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr-eng \
     # Video/Audio processing dependencies
     ffmpeg \
+    # Chess engine
+    stockfish \
     # Clean up
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -117,7 +119,13 @@ RUN pip install --no-cache-dir --upgrade pip && \
     # OCR
     pytesseract>=0.3.10 \
     # Mathematical computation verification
-    sympy>=1.12
+    sympy>=1.12 \
+    # Chess analysis
+    python-chess>=1.10.0 \
+    # Speech recognition (lightweight)
+    faster-whisper>=1.0.0 \
+    # Computer vision
+    opencv-python-headless>=4.8.0
 
 # Create shared directory for Playwright browsers (accessible by all users)
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
@@ -138,6 +146,12 @@ WORKDIR /workspace
 # Create non-root user for security
 RUN useradd -m -s /bin/bash sandbox && \
     chown -R sandbox:sandbox /workspace
+
+# Pre-download faster-whisper tiny model so it's available offline
+RUN python -c "from faster_whisper import WhisperModel; WhisperModel('tiny')"
+
+# Ensure pip-installed CLI tools are on PATH for non-root user
+ENV PATH="/home/sandbox/.local/bin:/usr/games:${PATH}"
 
 # Switch to non-root user
 USER sandbox
