@@ -13,20 +13,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""NAT Analyze - Failure analysis tool for NeMo Agent Toolkit."""
+"""NAT Analyze - LLM-based failure analysis tool for NeMo Agent Toolkit."""
 
-__version__ = "0.1.0"
-
-from nat.analyze.models import FailureCategory, FailurePacket, SpanSummary
-from nat.analyze.classifier.registry import RuleRegistry
-from nat.analyze.classifier.base import ClassificationRule, PatternRule, RuleResult
+__version__ = "0.2.0"
 
 __all__ = [
-    "FailureCategory",
-    "FailurePacket",
-    "SpanSummary",
-    "RuleRegistry",
-    "ClassificationRule",
-    "PatternRule",
-    "RuleResult",
+    "AnalysisReport",
+    "FailureAnalyzer",
+    "FingerprintGroup",
+    "StepDetail",
+    "StepSummary",
+    "TaskAnalysis",
 ]
+
+
+def __getattr__(name: str):
+    if name in ("AnalysisReport", "FingerprintGroup", "StepDetail", "StepSummary", "TaskAnalysis"):
+        from nat.analyze.models import (
+            AnalysisReport,
+            FingerprintGroup,
+            StepDetail,
+            StepSummary,
+            TaskAnalysis,
+        )
+
+        _model_exports = {
+            "AnalysisReport": AnalysisReport,
+            "FingerprintGroup": FingerprintGroup,
+            "StepDetail": StepDetail,
+            "StepSummary": StepSummary,
+            "TaskAnalysis": TaskAnalysis,
+        }
+        globals().update(_model_exports)
+        return _model_exports[name]
+
+    if name == "FailureAnalyzer":
+        from nat.analyze.analyzer import FailureAnalyzer
+
+        globals()["FailureAnalyzer"] = FailureAnalyzer
+        return FailureAnalyzer
+
+    raise AttributeError(f"module 'nat.analyze' has no attribute {name!r}")

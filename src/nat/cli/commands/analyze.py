@@ -15,9 +15,9 @@
 
 """CLI entry point for nat analyze command."""
 
+import asyncio
 import json
 import logging
-import sys
 from pathlib import Path
 
 import click
@@ -41,65 +41,58 @@ logger = logging.getLogger(__name__)
     help="Output directory for reports (default: same as workflow_output)",
 )
 @click.option(
-    "--config", "-c",
-    type=click.Path(exists=True, path_type=Path),
-    help="Path to analyze config YAML file",
+    "--model", "-m",
+    default="gpt-5.2",
+    show_default=True,
+    help="LLM model for analysis",
 )
 @click.option(
-    "--rules", "-r",
-    type=click.Path(exists=True, path_type=Path),
-    help="Path to custom rules Python file",
-)
-@click.option(
-    "--llm-triage/--no-llm-triage",
-    default=True,
-    help="Enable LLM triage for unclassified failures (default: enabled)",
-)
-@click.option(
-    "--llm-model",
-    default="gpt-4o-mini",
-    help="LLM model for triage (default: gpt-4o-mini)",
+    "--base-url",
+    help="Custom API base URL",
 )
 @click.option(
     "--api-key",
     envvar="OPENAI_API_KEY",
-    help="API key for LLM triage",
+    help="API key for LLM calls",
+)
+@click.option(
+    "--concurrency",
+    default=5,
+    show_default=True,
+    type=int,
+    help="Number of concurrent LLM calls for per-task analysis",
 )
 @click.pass_context
 def analyze_command(
     ctx: click.Context,
     workflow_output: Path | None,
     output: Path | None,
-    config: Path | None,
-    rules: Path | None,
-    llm_triage: bool,
-    llm_model: str,
+    model: str,
+    base_url: str | None,
     api_key: str | None,
+    concurrency: int,
 ) -> None:
     """Analyze failures from nat eval workflow output.
 
-    Automatically classifies failures and generates reports with
-    ROI-prioritized fix recommendations.
+    Uses LLM to analyze each failed task's execution trace, identify root causes,
+    and group similar failures by fingerprint.
 
     Example usage:
 
         nat analyze -w .tmp/workflow_output.json
 
-        nat analyze -w output.json --llm-triage
+        nat analyze -w output.json -m gpt-5.2 --concurrency 10
 
-        nat analyze -w output.json -c config.yaml -r custom_rules.py
+        nat analyze -w output.json --base-url https://custom-api.example.com/v1
     """
-    # Store options in context for subcommands
     ctx.ensure_object(dict)
     ctx.obj["workflow_output"] = workflow_output
     ctx.obj["output"] = output
-    ctx.obj["config"] = config
-    ctx.obj["rules"] = rules
-    ctx.obj["llm_triage"] = llm_triage
-    ctx.obj["llm_model"] = llm_model
+    ctx.obj["model"] = model
+    ctx.obj["base_url"] = base_url
     ctx.obj["api_key"] = api_key
+    ctx.obj["concurrency"] = concurrency
 
-    # If invoked without subcommand and workflow_output provided, run full pipeline
     if ctx.invoked_subcommand is None:
         if workflow_output:
             ctx.invoke(run_pipeline)
@@ -110,94 +103,73 @@ def analyze_command(
 @analyze_command.command("pipeline")
 @click.pass_context
 def run_pipeline(ctx: click.Context) -> None:
-    """Run full analysis pipeline: export -> classify -> report."""
+    """Run full analysis pipeline: export -> analyze -> report."""
     opts = ctx.obj
 
     workflow_output = opts["workflow_output"]
     if not workflow_output:
         raise click.UsageError("--workflow-output is required")
 
-    from nat.analyze.classifier import RuleBasedClassifier, RuleRegistry
+    from nat.analyze.analyzer import FailureAnalyzer
     from nat.analyze.dashboard import FailureDashboard
-    from nat.analyze.exporter import WorkflowExporter
-
-    # Load custom config if provided
-    if opts["config"]:
-        RuleRegistry.load_from_yaml(opts["config"])
-
-    # Load custom rules if provided
-    if opts["rules"]:
-        RuleRegistry.load_from_python(opts["rules"])
+    from nat.analyze.exporter import load_from_workflow_output
 
     # Step 1: Export failures
-    exporter = WorkflowExporter()
-    # Auto-detect accuracy_output.json in the same directory
     accuracy_output = workflow_output.parent / "accuracy_output.json"
-    packets = exporter.load_from_workflow_output(
+    analyses, total_tasks = load_from_workflow_output(
         workflow_output,
         accuracy_output_path=accuracy_output if accuracy_output.exists() else None,
     )
-    click.echo(f"Exported {len(packets)} failure packets")
+    click.echo(f"Exported {len(analyses)} failed tasks (out of {total_tasks} total)")
 
-    if not packets:
+    if not analyses:
         click.echo("No failures found!")
         return
 
-    # Step 2: Rule-based classification
-    classifier = RuleBasedClassifier()
-    rule_classified, needs_llm = classifier.classify_batch(packets)
+    # Step 2: LLM analysis
+    analyzer = FailureAnalyzer(
+        model=opts["model"],
+        api_key=opts["api_key"],
+        base_url=opts["base_url"],
+        concurrency=opts["concurrency"],
+    )
+    click.echo(f"Analyzing with {opts['model']} (concurrency={opts['concurrency']})...")
+    asyncio.run(analyzer.analyze_all(analyses))
 
-    # Step 3: LLM triage (if enabled)
-    if opts["llm_triage"] and needs_llm:
-        from nat.analyze.llm_triage import LLMTriage
+    # Step 3: Build report
+    report = analyzer.build_report(analyses, total_tasks)
 
-        triage = LLMTriage(
-            model=opts["llm_model"],
-            api_key=opts["api_key"],
-            config_path=opts["config"],
-        )
-        triage.triage_batch(needs_llm)
-
-    all_packets = rule_classified + needs_llm
-
-    # Step 4: Generate reports
-    dashboard = FailureDashboard(all_packets)
-
+    # Step 4: Generate outputs
     output_dir = opts["output"] or workflow_output.parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save packets
-    packets_path = output_dir / "failure_packets.jsonl"
-    exporter.save_packets(all_packets, packets_path)
+    dashboard = FailureDashboard(report)
 
-    # Generate HTML report
     report_path = output_dir / "failure_report.html"
     dashboard.generate_html_report(report_path)
 
-    # Save JSON summary
-    summary = dashboard.generate_summary()
-    summary_path = output_dir / "failure_summary.json"
-    with open(summary_path, "w") as f:
-        json.dump(summary, f, indent=2)
+    json_path = output_dir / "failure_analysis.json"
+    dashboard.generate_json_report(json_path)
 
     # Print summary
     click.echo("\n" + "=" * 60)
     click.echo("FAILURE ANALYSIS COMPLETE")
     click.echo("=" * 60)
-    click.echo(f"Total failures: {summary['total_failures']}")
-    click.echo(f"Rule classified: {summary['rule_classified']}")
-    click.echo(f"LLM classified: {summary['llm_classified']}")
-    click.echo("\nCategory Distribution:")
-    for cat, count in summary["category_distribution"].items():
-        click.echo(f"  - {cat}: {count}")
-    click.echo("\nTop Priorities:")
-    for i, p in enumerate(summary["top_priorities"][:5], 1):
-        click.echo(f"  {i}. {p['category']} (count={p['count']}, effort={p['effort']})")
-        click.echo(f"     Fix: {p['fix_template']}")
-    click.echo("\nOutput files:")
-    click.echo(f"  - Packets: {packets_path}")
+    click.echo(f"Total tasks: {report.total_tasks}")
+    click.echo(f"Total failures: {report.total_failures}")
+    click.echo(f"Failure groups: {len(report.fingerprint_groups)}")
+    click.echo(f"Model: {report.model_used}")
+
+    if report.fingerprint_groups:
+        click.echo("\nFingerprint Groups:")
+        for g in sorted(report.fingerprint_groups, key=lambda x: x.count, reverse=True):
+            click.echo(f"  [{g.count}] {g.group_name}")
+            if g.description:
+                click.echo(f"      {g.description[:100]}")
+
+    click.echo(f"\nOutput files:")
     click.echo(f"  - Report: {report_path}")
-    click.echo(f"  - Summary: {summary_path}")
+    click.echo(f"  - JSON:   {json_path}")
     click.echo("=" * 60)
 
 
@@ -212,125 +184,61 @@ def run_pipeline(ctx: click.Context) -> None:
     "--output", "-o",
     type=click.Path(path_type=Path),
     required=True,
-    help="Output path for failure_packets.jsonl",
+    help="Output path for task_analyses.json",
 )
 def export_failures(workflow_output: Path, output: Path) -> None:
-    """Export failure packets from workflow_output.json."""
-    from nat.analyze.exporter import WorkflowExporter
+    """Export failed task data from workflow_output.json (no LLM analysis)."""
+    from nat.analyze.exporter import load_from_workflow_output
 
-    exporter = WorkflowExporter()
-    packets = exporter.load_from_workflow_output(workflow_output)
-    exporter.save_packets(packets, output)
+    analyses, total_tasks = load_from_workflow_output(workflow_output)
 
-    click.echo(f"Exported {len(packets)} failure packets to {output}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with open(output, "w") as f:
+        json.dump([a.model_dump() for a in analyses], f, indent=2, ensure_ascii=False)
+
+    click.echo(f"Exported {len(analyses)} failed tasks (out of {total_tasks}) to {output}")
 
 
 @analyze_command.command("report")
 @click.option(
-    "--packets", "-p",
+    "--input", "-i",
+    "input_path",
     type=click.Path(exists=True, path_type=Path),
     required=True,
-    help="Path to failure_packets.jsonl",
+    help="Path to failure_analysis.json",
 )
 @click.option(
     "--output", "-o",
     type=click.Path(path_type=Path),
-    help="Output directory for report",
+    help="Output directory for HTML report",
 )
-def generate_report(packets: Path, output: Path | None) -> None:
-    """Generate HTML report from classified packets."""
+def generate_report(input_path: Path, output: Path | None) -> None:
+    """Generate HTML report from an existing failure_analysis.json."""
     from nat.analyze.dashboard import FailureDashboard
-    from nat.analyze.exporter import WorkflowExporter
+    from nat.analyze.models import AnalysisReport
 
-    exporter = WorkflowExporter()
-    packet_list = exporter.load_packets(packets)
+    with open(input_path) as f:
+        data = json.load(f)
 
-    dashboard = FailureDashboard(packet_list)
+    report = AnalysisReport.model_validate(data)
+    dashboard = FailureDashboard(report)
 
-    output_dir = output or packets.parent
+    output_dir = output or input_path.parent
     report_path = output_dir / "failure_report.html"
     dashboard.generate_html_report(report_path)
 
-    summary = dashboard.generate_summary()
-    summary_path = output_dir / "failure_summary.json"
-    with open(summary_path, "w") as f:
-        json.dump(summary, f, indent=2)
-
     click.echo(f"Generated report: {report_path}")
-    click.echo(f"Generated summary: {summary_path}")
-
-
-@analyze_command.command("list-rules")
-@click.option(
-    "--config", "-c",
-    type=click.Path(exists=True, path_type=Path),
-    help="Path to analyze config YAML file",
-)
-@click.option(
-    "--rules", "-r",
-    type=click.Path(exists=True, path_type=Path),
-    help="Path to custom rules Python file",
-)
-def list_rules(config: Path | None, rules: Path | None) -> None:
-    """List all available classification rules."""
-    from nat.analyze.classifier import RuleRegistry
-
-    if config:
-        RuleRegistry.load_from_yaml(config)
-    if rules:
-        RuleRegistry.load_from_python(rules)
-
-    rule_list = RuleRegistry.list_rules()
-
-    click.echo("\nAvailable Classification Rules:")
-    click.echo("-" * 60)
-    for rule in rule_list:
-        status = "enabled" if rule["enabled"] else "disabled"
-        click.echo(
-            f"  {rule['name']:<25} "
-            f"category={rule['category']:<20} "
-            f"priority={rule['priority']:<3} "
-            f"[{status}]"
-        )
-    click.echo("-" * 60)
-    click.echo(f"Total: {len(rule_list)} rules")
 
 
 @analyze_command.command("list-categories")
 def list_categories() -> None:
-    """List all failure categories."""
-    from nat.analyze.models import FailureCategory
-
-    click.echo("\nFailure Categories:")
-    click.echo("-" * 60)
-
-    click.echo("\nRule-based (detectable without LLM):")
-    rule_cats = [
-        "tool_timeout", "tool_rate_limit", "tool_server_error",
-        "tool_parameter_error", "output_format", "output_empty",
-        "context_overflow", "resource_exhaustion", "recursion_limit",
-        "network_error", "auth_failure", "retrieval_empty",
-    ]
-    for cat in rule_cats:
-        click.echo(f"  - {cat}")
-
-    click.echo("\nLLM-based (requires semantic analysis):")
-    llm_cats = [
-        "task_understanding", "planning_decomposition", "tool_selection",
-        "evidence_utilization", "reasoning_calculation", "state_memory",
-        "policy_safety",
-    ]
-    for cat in llm_cats:
-        click.echo(f"  - {cat}")
-
-    # Show custom categories if any
-    custom = list(FailureCategory._custom_categories.keys())
-    if custom:
-        click.echo("\nCustom categories:")
-        for cat in custom:
-            click.echo(f"  - {cat}")
-
-    click.echo("-" * 60)
+    """List fingerprint groups from the most recent analysis."""
+    click.echo("\nFailure analysis uses free-form LLM-generated fingerprints.")
+    click.echo("Run 'nat analyze -w <workflow_output.json>' to see actual failure categories.")
+    click.echo("\nThe LLM will automatically:")
+    click.echo("  1. Analyze each failed task's execution trace")
+    click.echo("  2. Generate a descriptive fingerprint for each failure")
+    click.echo("  3. Cluster similar fingerprints into groups")
 
 
 if __name__ == "__main__":
