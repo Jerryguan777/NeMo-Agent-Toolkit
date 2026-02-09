@@ -124,6 +124,21 @@ class BaseSandbox(ABC):
         pass
 
     @abstractmethod
+    async def read_file_bytes(self, path: str) -> bytes:
+        """Read file content as raw bytes from the sandbox.
+
+        Args:
+            path: Path to the file in the sandbox.
+
+        Returns:
+            bytes: File content as raw bytes.
+
+        Raises:
+            FileNotFoundError: If the file does not exist.
+        """
+        pass
+
+    @abstractmethod
     async def write_file(self, path: str, content: str) -> None:
         """Write content to a file in the sandbox.
 

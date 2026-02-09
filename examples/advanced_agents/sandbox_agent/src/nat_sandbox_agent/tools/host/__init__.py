@@ -18,6 +18,7 @@
 These tools don't require sandbox isolation and run directly on the host:
 - web_search: Tavily API calls
 - youtube_transcript: YouTube transcript API calls
+- analyze_image: OpenAI vision API calls
 
 This provides better security (API keys not exposed to sandbox) and
 lower latency (no Docker exec overhead).
@@ -26,18 +27,22 @@ lower latency (no Docker exec overhead).
 
 from langchain_core.tools import StructuredTool
 
+from nat_sandbox_agent.sandbox.base import BaseSandbox
 from nat_sandbox_agent.tools.common import DEFAULT_MAX_OUTPUT_CHARS
+from nat_sandbox_agent.tools.host.vision import create_vision_tool
 from nat_sandbox_agent.tools.host.web_search import create_web_search_tool
 from nat_sandbox_agent.tools.host.youtube import create_youtube_tool
 
 
 def create_host_tools(
+    sandbox: BaseSandbox,
     tavily_api_key: str | None = None,
     max_output_chars: int = DEFAULT_MAX_OUTPUT_CHARS,
 ) -> list[StructuredTool]:
     """Create all host-side tools.
 
     Args:
+        sandbox: Sandbox instance for tools that need file access.
         tavily_api_key: Tavily API key for web search. If None, uses env var.
         max_output_chars: Maximum characters for tool output.
 
@@ -47,10 +52,12 @@ def create_host_tools(
     return [
         create_web_search_tool(api_key=tavily_api_key),
         create_youtube_tool(max_output_chars=max_output_chars),
+        create_vision_tool(sandbox=sandbox, max_output_chars=max_output_chars),
     ]
 
 __all__ = [
     "create_host_tools",
     "create_web_search_tool",
     "create_youtube_tool",
+    "create_vision_tool",
 ]

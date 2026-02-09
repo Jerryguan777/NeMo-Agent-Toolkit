@@ -95,8 +95,10 @@ eval:
     max_concurrency: ${MAX_CONCURRENCY:-4}
     dataset:
       _type: parquet
-      # GAIA dataset from HuggingFace (requires accepting license at https://huggingface.co/datasets/gaia-benchmark/GAIA)
-      file_path: hf://datasets/gaia-benchmark/GAIA/2023/validation/metadata.parquet
+      # Enriched GAIA dataset with attached file paths injected into questions.
+      # Generated from HF gaia-benchmark/GAIA/2023/validation/metadata.parquet
+      # by prepending "[Attached file for this task: /workspace/input/{task_id}.{ext}]" to questions with attachments.
+      file_path: data/gaia_validation_enriched.parquet
       id_key: task_id
       structure:
         question_key: Question

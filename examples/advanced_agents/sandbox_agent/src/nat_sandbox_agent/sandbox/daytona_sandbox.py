@@ -16,6 +16,7 @@
 """Daytona cloud-based sandbox implementation."""
 
 import asyncio
+import base64
 import logging
 
 from nat_sandbox_agent.sandbox.base import WORKSPACE_INIT_COMMAND
@@ -195,6 +196,28 @@ class DaytonaSandbox(BaseSandbox):
             if "not found" in str(e).lower():
                 raise FileNotFoundError(f"File not found: {path}")
             logger.error(f"Failed to read file {path}: {e}")
+            raise
+
+    async def read_file_bytes(self, path: str) -> bytes:
+        """Read file content as raw bytes from the Daytona sandbox."""
+        if not self._sandbox:
+            raise RuntimeError("Sandbox not started")
+
+        try:
+            # Use base64 encoding via shell to transfer binary data
+            result = await self.run_command(f"base64 -w 0 {path}")
+            if result.exit_code != 0:
+                if "No such file" in result.stderr:
+                    raise FileNotFoundError(f"File not found: {path}")
+                raise RuntimeError(f"Failed to read file: {result.stderr}")
+
+            return base64.b64decode(result.stdout)
+        except FileNotFoundError:
+            raise
+        except Exception as e:
+            if "not found" in str(e).lower():
+                raise FileNotFoundError(f"File not found: {path}")
+            logger.error(f"Failed to read file bytes {path}: {e}")
             raise
 
     async def write_file(self, path: str, content: str) -> None:

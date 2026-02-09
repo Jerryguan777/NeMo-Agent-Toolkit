@@ -37,10 +37,10 @@ def event_loop():
 def mock_sandbox() -> MagicMock:
     """Create a mock sandbox instance for testing.
 
-    Mocks the 5 core methods of BaseSandbox:
+    Mocks the 6 core methods of BaseSandbox:
     - start, cleanup (lifecycle)
     - run_command (execution)
-    - read_file, write_file (file I/O)
+    - read_file, read_file_bytes, write_file (file I/O)
     """
     sandbox = MagicMock(spec=BaseSandbox)
 
@@ -51,6 +51,7 @@ def mock_sandbox() -> MagicMock:
 
     # Mock file operations
     sandbox.read_file = AsyncMock(return_value="file content")
+    sandbox.read_file_bytes = AsyncMock(return_value=b"file content bytes")
     sandbox.write_file = AsyncMock(return_value=None)
 
     # Mock lifecycle

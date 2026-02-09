@@ -224,8 +224,18 @@ class DockerSandbox(BaseSandbox):
                 stderr=str(e),
             )
 
-    async def read_file(self, path: str) -> str:
-        """Read file content from the container."""
+    async def _read_file_raw(self, path: str) -> bytes:
+        """Read raw file bytes from the container via Docker archive API.
+
+        Args:
+            path: Path to the file in the container.
+
+        Returns:
+            Raw file bytes.
+
+        Raises:
+            FileNotFoundError: If the file does not exist.
+        """
         if not self._container:
             raise RuntimeError("Sandbox not started")
 
@@ -244,7 +254,7 @@ class DockerSandbox(BaseSandbox):
                 member = tar.getmembers()[0]
                 file_obj = tar.extractfile(member)
                 if file_obj:
-                    return file_obj.read().decode("utf-8", errors="replace")
+                    return file_obj.read()
                 raise FileNotFoundError(f"File not found: {path}")
 
         except NotFound:
@@ -252,6 +262,15 @@ class DockerSandbox(BaseSandbox):
         except Exception as e:
             logger.error(f"Failed to read file {path}: {e}")
             raise
+
+    async def read_file(self, path: str) -> str:
+        """Read file content from the container."""
+        raw = await self._read_file_raw(path)
+        return raw.decode("utf-8", errors="replace")
+
+    async def read_file_bytes(self, path: str) -> bytes:
+        """Read file content as raw bytes from the container."""
+        return await self._read_file_raw(path)
 
     async def write_file(self, path: str, content: str) -> None:
         """Write content to a file in the container."""

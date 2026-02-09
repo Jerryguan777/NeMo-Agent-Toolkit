@@ -35,7 +35,7 @@ def create_all_tools(
 
     This function combines:
     - Sandbox tools: shell, python, file_read, file_write, web_browse
-    - Host tools: web_search, youtube_transcript
+    - Host tools: web_search, youtube_transcript, analyze_image
     - Advanced tools (optional): extract_table, extract_list, verify_extraction,
                                  verify_calculation, verify_formula, trace_reasoning
 
@@ -60,8 +60,9 @@ def create_all_tools(
         include_advanced_tools=include_advanced_tools,
     )
 
-    # Host tools (web_search, youtube_transcript)
+    # Host tools (web_search, youtube_transcript, analyze_image)
     host_tools = create_host_tools(
+        sandbox=sandbox,
         tavily_api_key=tavily_api_key,
         max_output_chars=max_output_chars,
     )
@@ -92,6 +93,7 @@ def get_tool_descriptions(include_advanced: bool = False) -> str:
         # Host tools
         ("web_search", "Search the web using Tavily"),
         ("youtube_transcript", "Get transcript from YouTube videos"),
+        ("analyze_image", "Analyze images using a vision model"),
     ]
 
     if include_advanced:

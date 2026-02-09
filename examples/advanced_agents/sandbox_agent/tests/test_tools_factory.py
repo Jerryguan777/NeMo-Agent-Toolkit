@@ -26,10 +26,10 @@ class TestCreateAllTools:
     """Tests for create_all_tools factory function."""
 
     def test_returns_correct_number_of_tools(self, mock_sandbox):
-        """Test that create_all_tools returns all 7 tools."""
+        """Test that create_all_tools returns all 8 tools."""
         tools = create_all_tools(sandbox=mock_sandbox)
 
-        assert len(tools) == 7
+        assert len(tools) == 8
 
     def test_returns_all_expected_tool_names(self, mock_sandbox):
         """Test that all expected tools are present."""
@@ -44,6 +44,7 @@ class TestCreateAllTools:
             "web_browse",
             "web_search",
             "youtube_transcript",
+            "analyze_image",
         }
         assert tool_names == expected_tools
 
@@ -76,7 +77,7 @@ class TestCreateAllTools:
             sandbox=mock_sandbox,
             tavily_api_key="test-api-key",
         )
-        assert len(tools) == 7
+        assert len(tools) == 8
 
     def test_accepts_custom_max_output_chars(self, mock_sandbox):
         """Test that max_output_chars parameter is accepted."""
@@ -84,7 +85,7 @@ class TestCreateAllTools:
             sandbox=mock_sandbox,
             max_output_chars=5000,
         )
-        assert len(tools) == 7
+        assert len(tools) == 8
 
 
 class TestCreateSandboxTools:
@@ -118,18 +119,18 @@ class TestCreateSandboxTools:
 class TestCreateHostTools:
     """Tests for create_host_tools function."""
 
-    def test_returns_two_host_tools(self):
-        """Test that create_host_tools returns exactly 2 tools."""
-        tools = create_host_tools()
+    def test_returns_three_host_tools(self, mock_sandbox):
+        """Test that create_host_tools returns exactly 3 tools."""
+        tools = create_host_tools(sandbox=mock_sandbox)
 
-        assert len(tools) == 2
+        assert len(tools) == 3
 
-    def test_returns_expected_host_tools(self):
+    def test_returns_expected_host_tools(self, mock_sandbox):
         """Test that all host tools are present."""
-        tools = create_host_tools()
+        tools = create_host_tools(sandbox=mock_sandbox)
         tool_names = {t.name for t in tools}
 
-        expected = {"web_search", "youtube_transcript"}
+        expected = {"web_search", "youtube_transcript", "analyze_image"}
         assert tool_names == expected
 
 
@@ -154,6 +155,7 @@ class TestGetToolDescriptions:
             "web_browse",
             "web_search",
             "youtube_transcript",
+            "analyze_image",
         ]
         for tool_name in expected_tools:
             assert tool_name in descriptions
